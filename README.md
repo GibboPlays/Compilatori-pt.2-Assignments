@@ -1,6 +1,6 @@
 # Compilatori-pt.2---1-assignment
 
-##Come compilare il passo:
+## Come compilare il passo:
 In /build:  
 export LLVM_DIR=/usr/lib/llvm-19/bin  
 cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR ..  
