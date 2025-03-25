@@ -61,15 +61,15 @@ struct TestPass: PassInfoMixin<TestPass> {
             // Converto a int e guardo se è zero
             if (C->getSExtValue() == 0) {
               
-              for (auto Iter = Inst1st.user_begin(); Iter != Inst1st.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
-                Instruction InstAdd = dyn_cast<Instruction>(*Iter);
+              for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
+                Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
 
                 if (&Inst == InstAdd.getOperand(0))
                 {
-                  InstAdd->setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
+                  InstAdd.setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
                 } else if (&Inst == InstAdd.getOperand(1))
                 {
-                  InstAdd->setOperand(1, Inst.getOperand(0));
+                  InstAdd.setOperand(1, Inst.getOperand(0));
                 }
               }
             }
@@ -77,15 +77,15 @@ struct TestPass: PassInfoMixin<TestPass> {
   
           else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
             if (C->getSExtValue() == 0) {
-              for (auto Iter = Inst1st.user_begin(); Iter != Inst1st.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
-                Instruction InstAdd = dyn_cast<Instruction>(*Iter);
+              for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
+                Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
 
                 if (&Inst == InstAdd.getOperand(0))
                 {
-                  InstAdd->setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
+                  InstAdd.setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
                 } else if (&Inst == InstAdd.getOperand(1))
                 {
-                  InstAdd->setOperand(1, Inst.getOperand(0));
+                  InstAdd.setOperand(1, Inst.getOperand(0));
                 }
               }
             }
@@ -95,15 +95,15 @@ struct TestPass: PassInfoMixin<TestPass> {
         if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
           // Converto a int e guardo se è uno
           if (C->getSExtValue() == 1) {
-            for (auto Iter = Inst1st.user_begin(); Iter != Inst1st.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
-              Instruction InstAdd = dyn_cast<Instruction>(*Iter);
+            for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
+              Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
 
               if (&Inst == InstAdd.getOperand(0))
               {
-                InstAdd->setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
+                InstAdd.setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
               } else if (&Inst == InstAdd.getOperand(1))
               {
-                InstAdd->setOperand(1, Inst.getOperand(0));
+                InstAdd.setOperand(1, Inst.getOperand(0));
               }
             }
           }
@@ -111,15 +111,15 @@ struct TestPass: PassInfoMixin<TestPass> {
 
         else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
           if (C->getSExtValue() == 1) {
-            for (auto Iter = Inst1st.user_begin(); Iter != Inst1st.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
-              Instruction InstAdd = dyn_cast<Instruction>(*Iter);
+            for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
+              Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
 
               if (&Inst == InstAdd.getOperand(0))
               {
-                InstAdd->setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
+                InstAdd.setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
               } else if (&Inst == InstAdd.getOperand(1))
               {
-                InstAdd->setOperand(1, Inst.getOperand(0));
+                InstAdd.setOperand(1, Inst.getOperand(0));
               }
             }
           }
@@ -167,7 +167,7 @@ llvm::PassPluginLibraryInfo getTestPassPluginInfo() {
             PB.registerPipelineParsingCallback(
                 [](StringRef Name, FunctionPassManager &FPM,
                    ArrayRef<PassBuilder::PipelineElement>) {
-                  if (Name == "local-opts") {
+                  if (Name == "algebric_identity_opts") {
                     FPM.addPass(TestPass());
                     return true;
                   }

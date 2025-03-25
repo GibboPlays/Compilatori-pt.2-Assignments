@@ -1,0 +1,9 @@
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/algebric_identity/build/CMakeFiles/intrinsics_gen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/algebric_identity/build/CMakeFiles/omp_gen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/algebric_identity/build/CMakeFiles/acc_gen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/algebric_identity/build/CMakeFiles/ARMTargetParserTableGen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/algebric_identity/build/CMakeFiles/AArch64TargetParserTableGen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/algebric_identity/build/CMakeFiles/RISCVTargetParserTableGen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/algebric_identity/build/CMakeFiles/Algebric_identity_opts.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/algebric_identity/build/CMakeFiles/edit_cache.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/algebric_identity/build/CMakeFiles/rebuild_cache.dir
