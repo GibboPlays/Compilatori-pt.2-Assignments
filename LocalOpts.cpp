@@ -111,9 +111,7 @@ struct TestPass: PassInfoMixin<TestPass> {
       Instruction &Inst = *It; 
       if (Inst.getOpcode() == Instruction::Mul) {
           if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
-            // Converto a int e guardo se è potenza di 2
-
-            //controlla che funzioni
+            // Se è logaritmo esatto in base 2 allora inserisco shift
             if (C->getValue().exactLogBase2() != -1) {
               Instruction *NewInst = BinaryOperator::Create(Instruction::Shl, Inst.getOperand(0), 
                 ConstantInt::get(Type::getInt32Ty(Inst.getContext()), C->getValue().logBase2()));
