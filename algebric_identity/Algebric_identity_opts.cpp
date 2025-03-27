@@ -50,6 +50,21 @@ namespace {
 // New PM implementation
 struct TestPass: PassInfoMixin<TestPass> {
 
+  void replaceOperand(Instruction &Inst)
+  {
+    for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
+      Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
+
+      if (&Inst == InstAdd.getOperand(0))
+      {
+        InstAdd.setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
+      } else if (&Inst == InstAdd.getOperand(1))
+      {
+        InstAdd.setOperand(1, Inst.getOperand(0));
+      }
+    }
+  }
+
   bool runOnBasicBlock(BasicBlock &B) {
 
     // 1 ASSIGNMENT
@@ -61,33 +76,14 @@ struct TestPass: PassInfoMixin<TestPass> {
             // Converto a int e guardo se è zero
             if (C->getSExtValue() == 0) {
               
-              for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
-                Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
-
-                if (&Inst == InstAdd.getOperand(0))
-                {
-                  InstAdd.setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
-                } else if (&Inst == InstAdd.getOperand(1))
-                {
-                  InstAdd.setOperand(1, Inst.getOperand(0));
-                }
-              }
+              replaceOperand(Inst);
             }
           }
   
           else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
             if (C->getSExtValue() == 0) {
-              for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
-                Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
 
-                if (&Inst == InstAdd.getOperand(0))
-                {
-                  InstAdd.setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
-                } else if (&Inst == InstAdd.getOperand(1))
-                {
-                  InstAdd.setOperand(1, Inst.getOperand(0));
-                }
-              }
+              replaceOperand(Inst);
             }
         }
       }
@@ -95,37 +91,21 @@ struct TestPass: PassInfoMixin<TestPass> {
         if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
           // Converto a int e guardo se è uno
           if (C->getSExtValue() == 1) {
-            for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
-              Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
 
-              if (&Inst == InstAdd.getOperand(0))
-              {
-                InstAdd.setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
-              } else if (&Inst == InstAdd.getOperand(1))
-              {
-                InstAdd.setOperand(1, Inst.getOperand(0));
-              }
-            }
+            replaceOperand(Inst);
           }
         }
 
         else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
           if (C->getSExtValue() == 1) {
-            for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
-              Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
 
-              if (&Inst == InstAdd.getOperand(0))
-              {
-                InstAdd.setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
-              } else if (&Inst == InstAdd.getOperand(1))
-              {
-                InstAdd.setOperand(1, Inst.getOperand(0));
-              }
-            }
+            replaceOperand(Inst);
           }
         }
       }
     }
+
+
 
     return true;
   }
