@@ -13,10 +13,6 @@
 //      opt -load-pass-plugin=<path-to>libTestPass.so -passes="test-pass" `\`
 //        -disable-output <input-llvm-file>
 //
-
-
-// Modifica: anziche aggiungere solo l'istruzione di shift [e di add/sub], la devo sostituire al posto della mul/sdiv
-
 //
 // License: MIT
 //=============================================================================
