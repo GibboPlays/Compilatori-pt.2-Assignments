@@ -52,14 +52,18 @@ struct TestPass: PassInfoMixin<TestPass> {
 
   void replaceOperand(Instruction &Inst)
   {
-    for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) { //itero sugli usi per trovare dove uso il registro che voglio sostituire
+    //itero sugli usi per trovare dove uso il registro che voglio sostituire
+    for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) {
       Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
 
+      //se è il primo operando è lo stesso registro del risultato dell'operazione da sostituire
       if (&Inst == InstAdd.getOperand(0))
       {
-        InstAdd.setOperand(0, Inst.getOperand(0)); //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
-      } else if (&Inst == InstAdd.getOperand(1))
+        //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
+        InstAdd.setOperand(0, Inst.getOperand(0));
+      } else if (&Inst == InstAdd.getOperand(1)) //se è il secondo operando faccio lo stesso
       {
+        //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
         InstAdd.setOperand(1, Inst.getOperand(0));
       }
     }
@@ -69,36 +73,43 @@ struct TestPass: PassInfoMixin<TestPass> {
 
     // 1 ASSIGNMENT
 
+    //itero le istruzioni
     for (auto It = B.begin(); It != B.end(); ++It) {
-      Instruction &Inst = *It; 
+      Instruction &Inst = *It;
+      //se è una add 
       if (Inst.getOpcode() == Instruction::Add) {
-          if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
-            // Converto a int e guardo se è zero
-            if (C->getSExtValue() == 0) {
-              
-              replaceOperand(Inst);
-            }
-          }
-  
-          else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
-            if (C->getSExtValue() == 0) {
-
-              replaceOperand(Inst);
-            }
-        }
-      }
-      else if (Inst.getOpcode() == Instruction::Mul) {
+        // Converto a int il primo operatore
         if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
-          // Converto a int e guardo se è uno
-          if (C->getSExtValue() == 1) {
-
+          //guardo se è zero
+          if (C->getSExtValue() == 0) {
+            //il registro è da sostituire con il suo operando
             replaceOperand(Inst);
           }
         }
-
+        // Converto a int il secondo operatore
         else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
+          //guardo se è zero
+          if (C->getSExtValue() == 0) {
+            //il registro è da sostituire con il suo operando
+            replaceOperand(Inst);
+          }
+        }
+      }
+      //se è una mull
+      else if (Inst.getOpcode() == Instruction::Mul) {
+        // Converto a int il primo operatore
+        if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
+          //guardo se è uno
           if (C->getSExtValue() == 1) {
-
+            //il registro è da sostituire con il suo operando
+            replaceOperand(Inst);
+          }
+        }
+        // Converto a int il secondo operatore
+        else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
+          //guardo se è uno
+          if (C->getSExtValue() == 1) {
+            //il registro è da sostituire con il suo operando
             replaceOperand(Inst);
           }
         }
