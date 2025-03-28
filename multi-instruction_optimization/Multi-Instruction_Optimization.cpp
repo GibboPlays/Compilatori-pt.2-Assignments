@@ -69,7 +69,7 @@ struct TestPass: PassInfoMixin<TestPass> {
       // Converto a int il secondo operatore
       if (ConstantInt *C = dyn_cast<ConstantInt>(InstAdd.getOperand(1))) {
         //se il primo operando(attuale) = registro istruzione(precedente) e il numero(attuale) è il reciproco (del precedente) -> sostituisco
-        if (&Inst == InstAdd.getOperand(0) && C->getSExtValue() == -(sumdiff->getSExtValue())) {
+        if (&Inst == InstAdd.getOperand(0) && C->getSExtValue() == sumdiff->getSExtValue()) {
           //Inserisco l'istruzione in quelle da togliere
           toErase.push_back(&InstAdd);
           //il registro è da sostituire con il suo operando
@@ -79,7 +79,7 @@ struct TestPass: PassInfoMixin<TestPass> {
       // Converto a int il primo operatore
       else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
         //se il secondo operando(attuale) = registro istruzione(precedente) e il numero(attuale) è il reciproco (del precedente) -> sostituisco
-        if (&Inst == InstAdd.getOperand(1) && C->getSExtValue() == -(sumdiff->getSExtValue())) {
+        if (&Inst == InstAdd.getOperand(1) && C->getSExtValue() == sumdiff->getSExtValue()) {
           //Inserisco l'istruzione in quelle da togliere
           toErase.push_back(&InstAdd);
           //il registro è da sostituire con il suo operando
