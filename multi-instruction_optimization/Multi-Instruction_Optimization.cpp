@@ -60,31 +60,35 @@ struct TestPass: PassInfoMixin<TestPass> {
   }
 
   //controlla se esiste un'operazione reciproca 
-  void runControl(std::vector<Instruction*> &toErase, Instruction &Inst, int idxreg, ConstantInt*sumdiff)
+  void runControl(std::vector<Instruction*> &toErase, bool sub_add; Instruction &Inst, int idxreg, ConstantInt*sumdiff)
   {
     //itero sugli usi per trovare dove uso il registro che voglio sostituire
     for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) {
       Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
       
-      // Converto a int il secondo operatore
-      if (ConstantInt *C = dyn_cast<ConstantInt>(InstAdd.getOperand(1))) {
-        //se il primo operando(attuale) = registro istruzione(precedente) e il numero(attuale) è il reciproco (del precedente) -> sostituisco
-        if (&Inst == InstAdd.getOperand(0) && C->getSExtValue() == sumdiff->getSExtValue()) {
-          //Inserisco l'istruzione in quelle da togliere
-          toErase.push_back(&InstAdd);
-          //il registro è da sostituire con il suo operando
-          replaceOperand(InstAdd,idxreg);
+      //l'istruzione che cerco è add (True) o sub (False)
+      if ((sub_add && InstAdd.getOpcode() == Instruction::Add) || (!sub_add && InstAdd.getOpcode() == Instruction::Sub))
+      {
+        // Converto a int il secondo operatore
+        if (ConstantInt *C = dyn_cast<ConstantInt>(InstAdd.getOperand(1))) {
+          //se il primo operando(attuale) = registro istruzione(precedente) e il numero(attuale) è il reciproco (del precedente) -> sostituisco
+          if (&Inst == InstAdd.getOperand(0) && C->getSExtValue() == sumdiff->getSExtValue()) {
+            //Inserisco l'istruzione in quelle da togliere
+            toErase.push_back(&InstAdd);
+            //il registro è da sostituire con il suo operando
+            replaceOperand(InstAdd,idxreg);
+          }
         }
-      }
-      // Converto a int il primo operatore
-      else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
-        //se il secondo operando(attuale) = registro istruzione(precedente) e il numero(attuale) è il reciproco (del precedente) -> sostituisco
-        if (&Inst == InstAdd.getOperand(1) && C->getSExtValue() == sumdiff->getSExtValue()) {
-          //Inserisco l'istruzione in quelle da togliere
-          toErase.push_back(&InstAdd);
-          //il registro è da sostituire con il suo operando
-          replaceOperand(InstAdd,idxreg);
-        }
+        // Converto a int il primo operatore
+        else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
+          //se il secondo operando(attuale) = registro istruzione(precedente) e il numero(attuale) è il reciproco (del precedente) -> sostituisco
+          if (&Inst == InstAdd.getOperand(1) && C->getSExtValue() == sumdiff->getSExtValue()) {
+            //Inserisco l'istruzione in quelle da togliere
+            toErase.push_back(&InstAdd);
+            //il registro è da sostituire con il suo operando
+            replaceOperand(InstAdd,idxreg);
+          }
+        } 
       }
     }
   }
@@ -101,12 +105,12 @@ struct TestPass: PassInfoMixin<TestPass> {
         // Converto a int il primo operatore
         if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
           //controllo sull'istruzione
-          runControl(toErase,Inst,0,C);
+          runControl(toErase,False,Inst,0,C);
         }
         // Converto a int il secondo operatore
         else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
           //controllo sull'istruzione
-          runControl(toErase,Inst,1,C);
+          runControl(toErase,False,Inst,1,C);
           }
       }
       
@@ -115,13 +119,13 @@ struct TestPass: PassInfoMixin<TestPass> {
         // Converto a int il primo operatore
         if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
           //controllo sull'istruzione
-          runControl(toErase,Inst,0,C);
+          runControl(toErase,True,Inst,0,C);
         }
         
         // Converto a int il secondo operatore
         else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
           //controllo sull'istruzione
-          runControl(toErase,Inst,1,C);
+          runControl(toErase,True,Inst,1,C);
         }
       }
     }
