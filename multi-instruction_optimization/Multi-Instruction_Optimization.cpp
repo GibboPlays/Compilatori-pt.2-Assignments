@@ -1,6 +1,6 @@
 //=============================================================================
 // FILE:
-//    StrengthReduction.cpp
+//    Multi-Instruction_Optimization.cpp
 //
 // DESCRIPTION:
 //    Visits all functions in a module and prints their names. Strictly speaking, 
@@ -39,84 +39,93 @@ namespace {
 
 // New PM implementation
 struct TestPass: PassInfoMixin<TestPass> {
-  void applyStrengthReduction(std::vector<Instruction*> &toErase, Instruction *Inst, Instruction::BinaryOps ShiftOp, ConstantInt *C, int opNumber){
-    // toErase = vector di istruzioni vecchie (da eliminare successivamente);
-    // Inst = istruzione corrente;
-    // ShiftOp = codice operazione (Shl o AShr);
-    // C = operando ConstantInt;
-    // opNumber = numero dell'operando di tipo registro (non ConstantInt).
 
-    // Se l'operando è logaritmo esatto
-    if (C->getValue().exactLogBase2() != -1) {
-      Instruction *ShInst = BinaryOperator::Create(ShiftOp, Inst->getOperand(opNumber), 
-        ConstantInt::get(Type::getInt32Ty(Inst->getContext()), C->getValue().logBase2()));
-      ShInst->insertAfter(Inst);
-      Inst->replaceAllUsesWith(ShInst);
-      toErase.push_back(Inst);
+  void replaceOperand(Instruction &Inst, int idxreg)
+  {
+    //itero sugli usi per trovare dove uso il registro che voglio sostituire
+    for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) {
+      Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
+
+      //se è il primo operando è lo stesso registro del risultato dell'operazione da sostituire
+      if (&Inst == InstAdd.getOperand(0))
+      {
+        //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
+        InstAdd.setOperand(0, Inst.getOperand(idxreg));
+      } else if (&Inst == InstAdd.getOperand(1)) //se è il secondo operando faccio lo stesso
+      {
+        //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
+        InstAdd.setOperand(1, Inst.getOperand(idxreg));
+      }
     }
-    // L'operando non è logaritmo esatto
-    // Se sottraendo 1 all'operando è logaritmo esatto
-    else if ((C->getValue() - 1).exactLogBase2() != -1) {
-      Instruction *ShInst = BinaryOperator::Create(ShiftOp, Inst->getOperand(opNumber), 
-        ConstantInt::get(Type::getInt32Ty(Inst->getContext()), (C->getValue() - 1).logBase2()));
-      ShInst->insertAfter(Inst);
-      // Se è Mul
-      if (ShiftOp == Instruction::Shl){
-        Instruction *AddInst = BinaryOperator::Create(Instruction::Add, ShInst, Inst->getOperand(opNumber));       
-        AddInst->insertAfter(ShInst);
-        Inst->replaceAllUsesWith(AddInst);
+  }
+
+  //controlla se esiste un'operazione reciproca 
+  void runControl(std::vector<Instruction*> &toErase, Instruction &Inst, int idxreg, ConstantInt*sumdiff)
+  {
+    //itero sugli usi per trovare dove uso il registro che voglio sostituire
+    for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) {
+      Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
+      
+      // Converto a int il secondo operatore
+      if (ConstantInt *C = dyn_cast<ConstantInt>(InstAdd.getOperand(1))) {
+        //se il primo operando(attuale) = registro istruzione(precedente) e il numero(attuale) è il reciproco (del precedente) -> sostituisco
+        if (&Inst == InstAdd.getOperand(0) && C->getSExtValue() == -(sumdiff->getSExtValue())) {
+          //Inserisco l'istruzione in quelle da togliere
+          toErase.push_back(&InstAdd);
+          //il registro è da sostituire con il suo operando
+          replaceOperand(InstAdd,idxreg);
+        }
       }
-      // Se è Sdiv
-      else if (ShiftOp == Instruction::AShr){
-        Instruction *SubInst = BinaryOperator::Create(Instruction::Sub, ShInst, Inst->getOperand(opNumber));
-        SubInst->insertAfter(ShInst);
-        Inst->replaceAllUsesWith(SubInst);
+      // Converto a int il primo operatore
+      else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
+        //se il secondo operando(attuale) = registro istruzione(precedente) e il numero(attuale) è il reciproco (del precedente) -> sostituisco
+        if (&Inst == InstAdd.getOperand(1) && C->getSExtValue() == -(sumdiff->getSExtValue())) {
+          //Inserisco l'istruzione in quelle da togliere
+          toErase.push_back(&InstAdd);
+          //il registro è da sostituire con il suo operando
+          replaceOperand(InstAdd,idxreg);
+        }
       }
-      toErase.push_back(Inst);
-    }
-    // Se aggiungendo 1 all'operando è logaritmo esatto
-    else if ((C->getValue() + 1).exactLogBase2() != -1) {
-      Instruction *ShInst = BinaryOperator::Create(ShiftOp, Inst->getOperand(opNumber), 
-        ConstantInt::get(Type::getInt32Ty(Inst->getContext()), (C->getValue() + 1).logBase2()));
-      ShInst->insertAfter(Inst);
-      // Se è Mul
-      if (ShiftOp == Instruction::Shl){
-        Instruction *SubInst = BinaryOperator::Create(Instruction::Sub, ShInst, Inst->getOperand(opNumber));
-        SubInst->insertAfter(ShInst);
-        Inst->replaceAllUsesWith(SubInst);
-      }
-      // Se è Sdiv
-      else if (ShiftOp == Instruction::AShr){
-        Instruction *AddInst = BinaryOperator::Create(Instruction::Add, ShInst, Inst->getOperand(opNumber));
-        AddInst->insertAfter(ShInst);
-        Inst->replaceAllUsesWith(AddInst);
-      }
-      toErase.push_back(Inst);
     }
   }
 
   bool runOnBasicBlock(BasicBlock &B) {
+    
     std::vector<Instruction*> toErase;
+
+    //itero le istruzioni
     for (auto It = B.begin(); It != B.end(); ++It) {
-      Instruction &Inst = *It; 
-      if (Inst.getOpcode() == Instruction::Mul) {
+      Instruction &Inst = *It;
+      //se è una add 
+      if (Inst.getOpcode() == Instruction::Add) {
+        // Converto a int il primo operatore
         if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
-          // Se il valore (signed) dell'operando C è positivo (altrimenti errori nei casi limite)
-          if (C->getValue().getSExtValue() > 0)
-            applyStrengthReduction(toErase, &Inst, Instruction::Shl, C, 0);              
+          //controllo sull'istruzione
+          runControl(toErase,Inst,0,C);
         }
+        // Converto a int il secondo operatore
         else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
-          if (C->getValue().getSExtValue() > 0)
-            applyStrengthReduction(toErase, &Inst, Instruction::Shl, C, 1);
-        }
+          //controllo sull'istruzione
+          runControl(toErase,Inst,1,C);
+          }
       }
-      else if (Inst.getOpcode() == Instruction::SDiv){
+      
+      //se è una sub
+      else if (Inst.getOpcode() == Instruction::Sub) {
+        // Converto a int il primo operatore
         if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
-          if (C->getValue().getSExtValue() > 0)
-            applyStrengthReduction(toErase, &Inst, Instruction::AShr, C, 0);   
+          //controllo sull'istruzione
+          runControl(toErase,Inst,0,C);
+        }
+        
+        // Converto a int il secondo operatore
+        else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
+          //controllo sull'istruzione
+          runControl(toErase,Inst,1,C);
         }
       }
     }
+
     for (Instruction *I : toErase){
       errs() << "Erasing instruction: " << *I << "\n";
       if (I->use_empty()) 
@@ -165,7 +174,7 @@ llvm::PassPluginLibraryInfo getTestPassPluginInfo() {
             PB.registerPipelineParsingCallback(
                 [](StringRef Name, FunctionPassManager &FPM,
                    ArrayRef<PassBuilder::PipelineElement>) {
-                  if (Name == "strength-reduction") {
+                  if (Name == "multi-instruction_optimization") {
                     FPM.addPass(TestPass());
                     return true;
                   }

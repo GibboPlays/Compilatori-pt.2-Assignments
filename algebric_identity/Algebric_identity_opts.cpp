@@ -1,6 +1,6 @@
 //=============================================================================
 // FILE:
-//    LocalOpts.cpp
+//    algebric_identity_opts.cpp
 //
 // DESCRIPTION:
 //    Visits all functions in a module and prints their names. Strictly speaking, 
@@ -12,15 +12,6 @@
 //    New PM
 //      opt -load-pass-plugin=<path-to>libTestPass.so -passes="test-pass" `\`
 //        -disable-output <input-llvm-file>
-
-// in /build:
-// export LLVM_DIR=/usr/lib/llvm-19/bin
-// cmake -DLT_LLVM_INSTALL_DIR=$LLVM_DIR ..
-// make
-// export PATH=/usr/lib/llvm-19/bin:$PATH
-// opt -load-pass-plugin ./libLocalOpts.so -passes=local-opts ../test/Foo.ll -o ../test/Foo.optimized.bc
-// llvm-dis ../test/Foo.optimized.bc -o ../test/Foo.optimized.ll
-// 
 
 //
 //
@@ -50,7 +41,7 @@ namespace {
 // New PM implementation
 struct TestPass: PassInfoMixin<TestPass> {
 
-  void replaceOperand(Instruction &Inst)
+  void replaceOperand(Instruction &Inst, int idxreg)
   {
     //itero sugli usi per trovare dove uso il registro che voglio sostituire
     for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) {
@@ -60,63 +51,77 @@ struct TestPass: PassInfoMixin<TestPass> {
       if (&Inst == InstAdd.getOperand(0))
       {
         //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
-        InstAdd.setOperand(0, Inst.getOperand(0));
+        InstAdd.setOperand(0, Inst.getOperand(idxreg));
       } else if (&Inst == InstAdd.getOperand(1)) //se è il secondo operando faccio lo stesso
       {
         //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
-        InstAdd.setOperand(1, Inst.getOperand(0));
+        InstAdd.setOperand(1, Inst.getOperand(idxreg));
       }
     }
   }
 
   bool runOnBasicBlock(BasicBlock &B) {
 
-    // 1 ASSIGNMENT
+    std::vector<Instruction*> toErase;
 
     //itero le istruzioni
     for (auto It = B.begin(); It != B.end(); ++It) {
       Instruction &Inst = *It;
       //se è una add 
       if (Inst.getOpcode() == Instruction::Add) {
-        // Converto a int il primo operatore
+        // Converto a int il secondo operatore
         if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
           //guardo se è zero
           if (C->getSExtValue() == 0) {
+            //Aggiungo l'istruzione a quelle da rimuovere
+            toErase.push_back(&Inst);
             //il registro è da sostituire con il suo operando
-            replaceOperand(Inst);
+            replaceOperand(Inst,0);
           }
         }
-        // Converto a int il secondo operatore
+        // Converto a int il primo operatore
         else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
           //guardo se è zero
           if (C->getSExtValue() == 0) {
+            //Aggiungo l'istruzione a quelle da rimuovere
+            toErase.push_back(&Inst);
             //il registro è da sostituire con il suo operando
-            replaceOperand(Inst);
+            replaceOperand(Inst,1);
           }
         }
       }
       //se è una mull
       else if (Inst.getOpcode() == Instruction::Mul) {
-        // Converto a int il primo operatore
+        // Converto a int il secondo operatore
         if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
           //guardo se è uno
           if (C->getSExtValue() == 1) {
+            //Aggiungo l'istruzione a quelle da rimuovere
+            toErase.push_back(&Inst);
             //il registro è da sostituire con il suo operando
-            replaceOperand(Inst);
+            replaceOperand(Inst,0);
           }
         }
-        // Converto a int il secondo operatore
+        // Converto a int il primo operatore
         else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
           //guardo se è uno
           if (C->getSExtValue() == 1) {
+            //Aggiungo l'istruzione a quelle da rimuovere
+            toErase.push_back(&Inst);
             //il registro è da sostituire con il suo operando
-            replaceOperand(Inst);
+            replaceOperand(Inst,1);
           }
         }
       }
     }
 
-
+    for (Instruction *I : toErase){
+      errs() << "Erasing instruction: " << *I << "\n";
+      if (I->use_empty()) 
+        I->eraseFromParent();
+      else
+        errs() << "Error erasing instruction: " << *I << "\n";
+    }
 
     return true;
   }
