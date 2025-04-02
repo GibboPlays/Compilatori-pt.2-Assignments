@@ -1,0 +1,9 @@
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/multi-instruction_optimization/build/CMakeFiles/intrinsics_gen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/multi-instruction_optimization/build/CMakeFiles/omp_gen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/multi-instruction_optimization/build/CMakeFiles/acc_gen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/multi-instruction_optimization/build/CMakeFiles/ARMTargetParserTableGen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/multi-instruction_optimization/build/CMakeFiles/AArch64TargetParserTableGen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/multi-instruction_optimization/build/CMakeFiles/RISCVTargetParserTableGen.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/multi-instruction_optimization/build/CMakeFiles/Multi-Instruction_Optimization.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/multi-instruction_optimization/build/CMakeFiles/edit_cache.dir
+/home/gibbo_plays/Laboratorio_compilatori/1_assignment/multi-instruction_optimization/build/CMakeFiles/rebuild_cache.dir
