@@ -33,9 +33,9 @@ endif()
 #===============================================================================
 # 3. ADD THE TARGET
 #===============================================================================
-add_library(Algebric_identity_opts SHARED Algebric_identity_opts.cpp)
+add_library(Loop-Invariant_Code_Motion_opts SHARED Loop-Invariant_Code_Motion_opts.cpp)
 
 # Allow undefined symbols in shared objects on Darwin (this is the default
 # behaviour on Linux)
-target_link_libraries(Algebric_identity_opts
+target_link_libraries(Loop-Invariant_Code_Motion_opts
   "$<$<PLATFORM_ID:Darwin>:-undefined dynamic_lookup>")

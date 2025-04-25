@@ -43,11 +43,14 @@ namespace {
 // New PM implementation
 struct TestPass: PassInfoMixin<TestPass> {
 
-  std::vector<Instruction> getLoopInvariants(LoopInfo &LI)
+  std::vector<std::pair<Instruction*,Loop*>> getLoopInvariants(LoopInfo &LI)
   {
     //Vettore di coppie istruzioni Loop-Invariant e loop a cui appartiene
-    std::vector<std::pair<Instruction*,Loop*>>
-    bool LI;
+    std::vector<std::pair<Instruction*,Loop*>> LII;
+    //Per capire se l'istruzione usata è loop invariant
+    bool li1;
+    //Per capire se l'istruzione che usa è loop invariant
+    bool li2;
 
     //Vettore dei definiti non Loop-Invariant
     std::vector<Instruction*> defined;
@@ -56,30 +59,58 @@ struct TestPass: PassInfoMixin<TestPass> {
       for (BasicBlock *BB : L->blocks()) 
       {
           
-        for (auto It = BB.begin(); It != BB.end(); ++It) 
+        for (auto It = BB->begin(); It != BB->end(); ++It) 
         {
           Instruction &Inst = *It;
 
-          LI = true;
+          li1 = true;
 
-          Instruction &firstInst = Inst.getOperand(0);
-          Instruction &secondInst = Inst.getOperand(1);
-
-          for (Instruction *I : defined)
+          for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter)
           {
-            if (firstInst == I || secondInst == I)
+            Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
+
+            li2 = true;
+
+            //Se l'istruzione che usa è già in defined è inutile continuare
+            for (Instruction *i: defined)
             {
-              LI=false;
+              if (&InstAdd == i)
+              {
+                li2 = false;
+                break;
+              }
             }
+            
+            if (li2)
+            {
+              //Guardo se l'istruzione di cui sto cercando gli usi è in defined
+              for (Instruction *i: defined)
+              {
+                if (&Inst == i)
+                {
+                  li1 = false;
+                  li2 = false;
+                  defined.push_back(&InstAdd);
+                  break;
+                }
+              }
+            }
+            
+            //Se ha passato non è in defined può essere candidata a essere loop invariant
+            if (li2 && L->contains(InstAdd.getParent()))
+            {
+              std::pair<Instruction*,Loop*> p1(&InstAdd,L);
+              LII.push_back(p1);
+            }
+
+            
           }
 
-          if (LI)
+          if (li1)
           {
-            defined.append(Inst);
-          } else {
-            std::pair <Instruction*,Loop*> p = make_pair(Inst,L);
-            LII.append(p);
-          }
+            std::pair <Instruction*,Loop*> p(&Inst,L);
+            LII.push_back(p);
+          } 
         }
     
       }
@@ -211,7 +242,7 @@ llvm::PassPluginLibraryInfo getTestPassPluginInfo() {
             PB.registerPipelineParsingCallback(
                 [](StringRef Name, FunctionPassManager &FPM,
                    ArrayRef<PassBuilder::PipelineElement>) {
-                  if (Name == "algebric_identity_opts") {
+                  if (Name == "loop-invariant_code_motion_opts") {
                     FPM.addPass(TestPass());
                     return true;
                   }
