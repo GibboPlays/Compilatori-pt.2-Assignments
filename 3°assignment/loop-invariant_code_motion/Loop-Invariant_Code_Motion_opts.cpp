@@ -28,6 +28,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/Dominators.h"
+#include "llvm/ADT/SmallVector.h"
 #include <cmath>
 
 using namespace llvm;
@@ -121,106 +122,116 @@ struct TestPass: PassInfoMixin<TestPass> {
     return LII;
   }
 
-/*
-
-  void replaceOperand(Instruction &Inst, int idxreg)
-  {
-    //itero sugli usi per trovare dove uso il registro che voglio sostituire
-    for (auto Iter = Inst.user_begin(); Iter != Inst.user_end(); ++Iter) {
-      Instruction &InstAdd = *(dyn_cast<Instruction>(*Iter));
-
-      //se è il primo operando è lo stesso registro del risultato dell'operazione da sostituire
-      if (&Inst == InstAdd.getOperand(0))
-      {
-        //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
-        InstAdd.setOperand(0, Inst.getOperand(idxreg));
-      } else if (&Inst == InstAdd.getOperand(1)) //se è il secondo operando faccio lo stesso
-      {
-        //sostituisco l'operando dell'istruzione con quello dell'operazione scorsa (avendo lo stesso valore)
-        InstAdd.setOperand(1, Inst.getOperand(idxreg));
-      }
-    }
-  }
-
-  bool runOnBasicBlock(BasicBlock &B) {
-
-    std::vector<Instruction*> toErase;
-
-    //itero le istruzioni
-    for (auto It = B.begin(); It != B.end(); ++It) {
-      Instruction &Inst = *It;
-      //se è una add 
-      if (Inst.getOpcode() == Instruction::Add) {
-        // Converto a int il secondo operatore
-        if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
-          //guardo se è zero
-          if (C->getSExtValue() == 0) {
-            //Aggiungo l'istruzione a quelle da rimuovere
-            toErase.push_back(&Inst);
-            //il registro è da sostituire con il suo operando
-            replaceOperand(Inst,0);
-          }
-        }
-        // Converto a int il primo operatore
-        else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
-          //guardo se è zero
-          if (C->getSExtValue() == 0) {
-            //Aggiungo l'istruzione a quelle da rimuovere
-            toErase.push_back(&Inst);
-            //il registro è da sostituire con il suo operando
-            replaceOperand(Inst,1);
-          }
-        }
-      }
-      //se è una mull
-      else if (Inst.getOpcode() == Instruction::Mul) {
-        // Converto a int il secondo operatore
-        if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(1))) {
-          //guardo se è uno
-          if (C->getSExtValue() == 1) {
-            //Aggiungo l'istruzione a quelle da rimuovere
-            toErase.push_back(&Inst);
-            //il registro è da sostituire con il suo operando
-            replaceOperand(Inst,0);
-          }
-        }
-        // Converto a int il primo operatore
-        else if (ConstantInt *C = dyn_cast<ConstantInt>(Inst.getOperand(0))) {
-          //guardo se è uno
-          if (C->getSExtValue() == 1) {
-            //Aggiungo l'istruzione a quelle da rimuovere
-            toErase.push_back(&Inst);
-            //il registro è da sostituire con il suo operando
-            replaceOperand(Inst,1);
-          }
-        }
-      }
-    }
-
-    for (Instruction *I : toErase){
-      errs() << "Erasing instruction: " << *I << "\n";
-      if (I->use_empty()) 
-        I->eraseFromParent();
-      else
-        errs() << "Error erasing instruction: " << *I << "\n";
-    }
-
-    return true;
-  }
-
-*/
-
   // Main entry point, takes IR unit to run the pass on (&F) and the
   // corresponding pass manager (to be queried if need be)
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM) {
 
+/* Lab_3
+
+     //Esercitazione 1 
+
+     LoopInfo &LI = AM.getResult<LoopAnalysis>(F);
+    
+     if (LI.empty())
+     {
+       outs() << "Nessun loop trovato nella funzione " << F.getName() << "\n";
+       return PreservedAnalyses::all();
+     }
+ 
+     for (BasicBlock &BB : F) {
+       if (LI.isLoopHeader(&BB)) {
+         outs() << "\nBB '" << BB << "' è header di loop";
+       }
+     }
+     
+     for (Loop *L : LI) {
+       bool norm = true;
+       
+       if (!L->getLoopPreheader()) {
+         norm = false;
+       }
+       if (L->getNumBackEdges() != 1) {
+         norm = false;
+       }
+       if (!L->hasDedicatedExits()) {
+         norm = false;
+       }
+            
+       if (norm)
+       {
+         outs() << "Loop in forma normale" << "\n";
+       } else {
+         outs() << "Loop NON in forma normale" << "\n";
+       }
+ 
+       Function *Fadd = L->getHeader()->getParent();
+ 
+       for (BasicBlock &Bt: *Fadd)
+       {
+         outs() << "  BB '" << Bt << "' -> ";
+ 
+         for (BasicBlock *Succ : successors(&Bt)) 
+         {
+           outs() << Succ<< " ";
+         }
+         outs() << "\n";
+       } 
+             
+ 
+       outs() << "- Blocchi del loop:\n";
+          
+       for (BasicBlock *BB : L->blocks()) {
+           
+         outs() << "  - " << BB << "\n";
+     
+       }
+ 
+ 
+     }
+ 
+     //Esercitazione 2
+ 
+     DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F);
+     
+     outs() << "Stampa Dominator Tree:\n";
+     for (auto *DTN : depth_first(DT.getRootNode())) 
+     {
+       BasicBlock &B = *DTN->getBlock();
+       outs() << B << "\n";
+     }
+    
+*/
+
     LoopInfo &LI = AM.getResult<LoopAnalysis>(F);
+
+    DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F);
 
     //Istruzioni Loop-Invariant
     std::vector<std::pair<Instruction*,Loop*>> LII = getLoopInvariants(LI);
 
-    //Controllo se domina le uscite
+    //Scorro le coppie dei loop invariant
+    for (std::pair<Instruction*,Loop*> *p : LII)
+    {
+      Instruction *i = p->first;
+      Loop *l = p->second;
+      
+      SmallVector <BasicBlock*> ebs = l->getExitingBlocks();
 
+      bool dom = true;
+
+      for (BasicBlock *eb : ebs)
+      {
+        dom = DT.dominates(i, eb);
+        if (!dom) break;
+      }
+
+      if (dom)
+      {
+        
+      }
+
+
+    }
 
 
   	return PreservedAnalyses::all();
