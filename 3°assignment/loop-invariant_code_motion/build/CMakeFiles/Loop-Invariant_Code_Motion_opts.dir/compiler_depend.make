@@ -513,7 +513,10 @@ CMakeFiles/Loop-Invariant_Code_Motion_opts.dir/Loop-Invariant_Code_Motion_opts.c
   /usr/include/c++/11/tr1/modified_bessel_func.tcc \
   /usr/include/c++/11/tr1/poly_hermite.tcc \
   /usr/include/c++/11/tr1/poly_laguerre.tcc \
-  /usr/include/c++/11/tr1/riemann_zeta.tcc
+  /usr/include/c++/11/tr1/riemann_zeta.tcc \
+  /usr/include/c++/11/map \
+  /usr/include/c++/11/bits/stl_map.h \
+  /usr/include/c++/11/bits/stl_multimap.h
 
 
 /usr/include/c++/11/tr1/poly_hermite.tcc:
@@ -541,6 +544,8 @@ CMakeFiles/Loop-Invariant_Code_Motion_opts.dir/Loop-Invariant_Code_Motion_opts.c
 /usr/include/llvm-19/llvm/Analysis/TargetTransformInfo.h:
 
 /usr/include/llvm-19/llvm/Support/MemoryBuffer.h:
+
+/usr/include/c++/11/map:
 
 /usr/include/llvm-19/llvm/ADT/FoldingSet.h:
 
@@ -796,6 +801,8 @@ CMakeFiles/Loop-Invariant_Code_Motion_opts.dir/Loop-Invariant_Code_Motion_opts.c
 
 /usr/include/llvm-19/llvm/ADT/StringMap.h:
 
+/usr/include/c++/11/bits/stl_map.h:
+
 /usr/include/llvm-19/llvm/IR/InstrTypes.h:
 
 /usr/include/llvm-19/llvm/Analysis/TargetLibraryInfo.h:
@@ -805,6 +812,8 @@ CMakeFiles/Loop-Invariant_Code_Motion_opts.dir/Loop-Invariant_Code_Motion_opts.c
 /usr/include/llvm-19/llvm/Support/TypeName.h:
 
 /usr/include/llvm-19/llvm/ADT/PointerIntPair.h:
+
+/usr/include/c++/11/bits/stl_multimap.h:
 
 /usr/include/llvm-19/llvm/ADT/iterator_range.h:
 

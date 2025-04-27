@@ -29,7 +29,10 @@
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/BitVector.h"
 #include <cmath>
+#include <vector>
+#include <map>
 
 using namespace llvm;
 
@@ -43,6 +46,32 @@ namespace {
 
 // New PM implementation
 struct TestPass: PassInfoMixin<TestPass> {
+
+  std::map<BasicBlock*,std::pair<BitVector,BitVector>> getReachingDefinitions(Function &F)
+  {
+    std::map<BasicBlock*,std::pair<BitVector,BitVector>> rd;
+    unsigned int numInst = F.getInstructionCount();
+    BitVector in(numInst), out(numInst);
+    std::pair<BitVector,BitVector> p(in,out);
+    std::vector<BasicBlock*> changedNodes;
+
+    //Initialize
+    for (BasicBlock &bb : F)
+    {
+      rd[&bb]=p;
+      changedNodes.append(&bb);
+    }
+
+    //Iterate
+    while(!changedNodes.empty())
+    {
+      
+    }
+
+
+    return rd;
+
+  }
 
   std::vector<std::pair<Instruction*,Loop*>> getLoopInvariants(LoopInfo &LI)
   {
@@ -206,6 +235,22 @@ struct TestPass: PassInfoMixin<TestPass> {
 
     DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F);
 
+    //Debug
+    std::map<BasicBlock*,std::pair<BitVector,BitVector>> rd = getReachingDefinitions(F);
+    for (auto [bb,p]: rd)
+    {
+      outs() << bb->getName() << ": ";
+      for (unsigned i = 0; i < p.first.size(); ++i) {
+        outs() << (p.first.test(i) ? "1" : "0");
+      }
+      outs() << " ";
+      for (unsigned i = 0; i < p.second.size(); ++i) {
+        outs() << (p.second.test(i) ? "1" : "0");
+      }
+      outs() << "\n";
+    }
+
+    
     //Istruzioni Loop-Invariant
     std::vector<std::pair<Instruction*,Loop*>> LII = getLoopInvariants(LI);
 
@@ -229,11 +274,11 @@ struct TestPass: PassInfoMixin<TestPass> {
       {
         
       }
-
+      
 
     }
 
-
+    
   	return PreservedAnalyses::all();
 }
 
