@@ -275,37 +275,84 @@ struct TestPass: PassInfoMixin<TestPass> {
 */
 
     LoopInfo &LI = AM.getResult<LoopAnalysis>(F);
-
     DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F);
-
     std::map<BasicBlock*,std::pair<std::set<Instruction*>,std::set<Instruction*>>> rd = getReachingDefinitions(F);
-    
     //Istruzioni Loop-Invariant
     std::vector<std::pair<Instruction*,Loop*>> LII = getLoopInvariants(LI,rd);
-
-    //Scorro le coppie dei loop invariant
-    for (std::pair<Instruction*,Loop*> *p : LII)
-    {
-      Instruction *i = p->first;
-      Loop *l = p->second;
-      
-      SmallVector <BasicBlock*> ebs = l->getExitingBlocks();
-
-      bool dom = true;
-
-      for (BasicBlock *eb : ebs)
-      {
-        dom = DT.dominates(i, eb);
-        if (!dom) break;
+    std::vector<Instruction *> Candidates
+    
+    std::vector<BasicBlock *> ExitBlocks;
+    for (Loop *L : LI) {
+      for (BasicBlock *BB : L->blocks()) {
+        for (BasicBlock *Succ : successors(BB))
+          if (!L->contains(Succ)) ExitBlocks.push_back(Succ);
       }
-
-      if (dom)
-      {
-        
-      }
-      
-
     }
+
+    
+
+    // Cercare istruzioni candidate
+
+    for (auto &p : LII) {
+      Instruction *Inst = p.first;
+      Loop *L = p.second;
+      // Si trovano in blocchi che dominano tutte le uscite del loop
+      bool dom_uscite = true;
+      for (BasicBlock *ExitBB : ExitBlocks) {
+        if (!DT.dominates(Inst->getParent(), ExitBB)) {
+          dom_uscite = false;
+          break;
+        }
+      }
+      // Oppure la variabile definita dall’istruzione è dead all’uscita del loop
+      bool dead = true;
+      for (User *U : Inst->users()) { // Scorro gli user dell'istruzione
+        if (Instruction *UserInst = dyn_cast<Instruction>(U)) {
+          if (L->contains(UserInst->getParent())) { // Se è nel loop
+            dead = false;
+            break;
+          }
+        }
+      }
+      // Assegnano un valore a variabili non assegnate altrove nel loop
+      bool assegn_unico = true;
+      for (BasicBlock *LoopBB : L->blocks()) {
+        for (Instruction &OtherInst : *LoopBB) {
+          if (&OtherInst != Inst && OtherInst.getName() == Inst->getName()) {
+            assegn_unico = false;
+            break;
+          }
+        }
+        if (!assegn_unico) break;
+      }
+      // Si trovano in blocchi che dominano tutti i blocchi nel loop che usano la variabile a cui si sta assegnando un valore
+      bool dom_all_b = true;
+      for (BasicBlock *LoopBB : L->blocks()) {
+        if (!DT.dominates(Inst->getParent(), LoopBB)) {
+          dom_all_b = false;
+          break;
+        }
+      }
+      // Se tutte le condizioni sono soddisfatte, l'istruzione è candidata per essere spostata
+      if (dom_uscite && (dead || assegn_unico) && dom_all_b) Candidates.push_back(Inst);
+    }
+
+
+
+
+
+
+    // Eseguire una ricerca depth-first dei blocch
+    ... // modifica: aggiungi dfs
+    
+    // Spostare l’istruzione candidata nel preheader se tutte le istruzioni invarianti da cui questa dipende sono state spostate
+    BasicBlock *Preheader = LI.getLoopFor(F.getEntryBlock())->getLoopPreheader();
+    ... // modifica: controlla che le istr invariants siano gia state spostate
+    if (Preheader)
+      for (Instruction *Inst : Candidates) Inst->moveBefore(Preheader->getTerminator());
+  
+
+
 
   	return PreservedAnalyses::all();
 }
