@@ -197,89 +197,12 @@ struct TestPass: PassInfoMixin<TestPass> {
   // Main entry point, takes IR unit to run the pass on (&F) and the
   // corresponding pass manager (to be queried if need be)
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM) {
-
-/* Lab_3
-
-     //Esercitazione 1 
-
-     LoopInfo &LI = AM.getResult<LoopAnalysis>(F);
-    
-     if (LI.empty())
-     {
-       outs() << "Nessun loop trovato nella funzione " << F.getName() << "\n";
-       return PreservedAnalyses::all();
-     }
- 
-     for (BasicBlock &BB : F) {
-       if (LI.isLoopHeader(&BB)) {
-         outs() << "\nBB '" << BB << "' è header di loop";
-       }
-     }
-     
-     for (Loop *L : LI) {
-       bool norm = true;
-       
-       if (!L->getLoopPreheader()) {
-         norm = false;
-       }
-       if (L->getNumBackEdges() != 1) {
-         norm = false;
-       }
-       if (!L->hasDedicatedExits()) {
-         norm = false;
-       }
-            
-       if (norm)
-       {
-         outs() << "Loop in forma normale" << "\n";
-       } else {
-         outs() << "Loop NON in forma normale" << "\n";
-       }
- 
-       Function *Fadd = L->getHeader()->getParent();
- 
-       for (BasicBlock &Bt: *Fadd)
-       {
-         outs() << "  BB '" << Bt << "' -> ";
- 
-         for (BasicBlock *Succ : successors(&Bt)) 
-         {
-           outs() << Succ<< " ";
-         }
-         outs() << "\n";
-       } 
-             
- 
-       outs() << "- Blocchi del loop:\n";
-          
-       for (BasicBlock *BB : L->blocks()) {
-           
-         outs() << "  - " << BB << "\n";
-     
-       }
- 
- 
-     }
- 
-     //Esercitazione 2
- 
-     DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F);
-     
-     outs() << "Stampa Dominator Tree:\n";
-     for (auto *DTN : depth_first(DT.getRootNode())) 
-     {
-       BasicBlock &B = *DTN->getBlock();
-       outs() << B << "\n";
-     }
-    
-*/
-
     LoopInfo &LI = AM.getResult<LoopAnalysis>(F);
     DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F);
     std::map<BasicBlock*,std::pair<std::set<Instruction*>,std::set<Instruction*>>> rd = getReachingDefinitions(F);
     //Istruzioni Loop-Invariant
     std::vector<std::pair<Instruction*,Loop*>> LII = getLoopInvariants(LI,rd);
-    std::vector<Instruction *> Candidates
+    std::vector<Instruction *> Candidates;
     
     std::vector<BasicBlock *> ExitBlocks;
     for (Loop *L : LI) {
@@ -289,13 +212,18 @@ struct TestPass: PassInfoMixin<TestPass> {
       }
     }
 
-    
-
+    errs() << "Numero di loop trovati: " << LII.size() << "\n";
+   
+  
+  
     // Cercare istruzioni candidate
 
     for (auto &p : LII) {
+
+      errs() << "Sono dentro al for che scorre LII\n";
       Instruction *Inst = p.first;
       Loop *L = p.second;
+      errs() << "Loop-invariant: " << *Inst << "\n";
       // Si trovano in blocchi che dominano tutte le uscite del loop
       bool dom_uscite = true;
       for (BasicBlock *ExitBB : ExitBlocks) {
@@ -333,9 +261,21 @@ struct TestPass: PassInfoMixin<TestPass> {
           break;
         }
       }
+      
+      errs() << "Istr: " << *Inst << "\n";
+      errs() << "\t dom_uscite: " << dom_uscite << "\n";
+      errs() << "\t dead: " << dead << "\n";
+      errs() << "\t assegn_unico: " << assegn_unico << "\n";
+      errs() << "\t dom_all_b: " << dom_all_b << "\n";
+
       // Se tutte le condizioni sono soddisfatte, l'istruzione è candidata per essere spostata
       if (dom_uscite && (dead || assegn_unico) && dom_all_b) Candidates.push_back(Inst);
     }
+
+
+
+
+
 
     // Eseguire una ricerca depth-first dei blocch
     std::vector<BasicBlock*> BBOrdinatiDFS;
@@ -346,25 +286,29 @@ struct TestPass: PassInfoMixin<TestPass> {
     Loop *L = LI.getLoopFor(&F.getEntryBlock());
       if (L){
       BasicBlock *Preheader = L->getLoopPreheader();
-    if (Preheader) {
-      std::vector<Instruction*> moved; // per istruzioni già spostate
-      for (Instruction *Inst : Candidates) {
-        bool tutteSpostate = true;
-        for (Use &U : Inst->operands())
-          // Se trovo una che non è ancora stata spostata
-          if (Instruction *OpInst = dyn_cast<Instruction>(U.get()))
-            if (std::find(Candidates.begin(), Candidates.end(), OpInst) != Candidates.end() &&
-                std::find(moved.begin(), moved.end(), OpInst) == moved.end()) {
-                tutteSpostate = false;
-                break;
-            }     
-        if (tutteSpostate) {
-          Inst->moveBefore(Preheader->getTerminator());
-          moved.push_back(Inst);
+      if (Preheader) {
+        std::vector<Instruction*> moved; // per istruzioni già spostate
+        for (Instruction *Inst : Candidates) {
+          bool tutteSpostate = true;
+          for (Use &U : Inst->operands())
+            // Se trovo una che non è ancora stata spostata
+            if (Instruction *OpInst = dyn_cast<Instruction>(U.get()))
+              if (std::find(Candidates.begin(), Candidates.end(), OpInst) != Candidates.end() &&
+                  std::find(moved.begin(), moved.end(), OpInst) == moved.end()) {
+                  tutteSpostate = false;
+                  break;
+              }     
+          if (tutteSpostate) {
+            errs() << "Sposto: " << *Inst << " nel preheader\n";
+            Inst->moveBefore(Preheader->getTerminator());
+            moved.push_back(Inst);
+          }
         }
       }
     }
-}
+    
+  
+
 
 
 
