@@ -337,19 +337,31 @@ struct TestPass: PassInfoMixin<TestPass> {
       if (dom_uscite && (dead || assegn_unico) && dom_all_b) Candidates.push_back(Inst);
     }
 
-
-
-
-
-
     // Eseguire una ricerca depth-first dei blocch
-    ... // modifica: aggiungi dfs
-    
+    std::vector<BasicBlock*> BBOrdinatiDFS;
+    for (BasicBlock *BB : llvm::depth_first(&F.getEntryBlock()))
+      BBOrdinatiDFS.push_back(BB);
+
     // Spostare l’istruzione candidata nel preheader se tutte le istruzioni invarianti da cui questa dipende sono state spostate
-    BasicBlock *Preheader = LI.getLoopFor(F.getEntryBlock())->getLoopPreheader();
-    ... // modifica: controlla che le istr invariants siano gia state spostate
-    if (Preheader)
-      for (Instruction *Inst : Candidates) Inst->moveBefore(Preheader->getTerminator());
+    BasicBlock *Preheader = LI.getLoopFor(&F.getEntryBlock())->getLoopPreheader();
+    if (Preheader) {
+      std::vector<Instruction*> moved; // per istruzioni già spostate
+      for (Instruction *Inst : Candidates) {
+        bool tutteSpostate = true;
+        for (Use &U : Inst->operands())
+          // Se trovo una che non è ancora stata spostata
+          if (Instruction *OpInst = dyn_cast<Instruction>(U.get()))
+            if (std::find(Candidates.begin(), Candidates.end(), OpInst) != Candidates.end() &&
+                std::find(moved.begin(), moved.end(), OpInst) == moved.end()) {
+                tutteSpostate = false;
+                break;
+            }     
+        if (tutteSpostate) {
+          Inst->moveBefore(Preheader->getTerminator());
+          moved.push_back(Inst);
+        }
+      }
+    }
   
 
 
