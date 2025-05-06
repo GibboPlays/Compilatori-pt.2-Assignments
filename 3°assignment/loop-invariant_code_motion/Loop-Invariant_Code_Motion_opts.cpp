@@ -343,7 +343,9 @@ struct TestPass: PassInfoMixin<TestPass> {
       BBOrdinatiDFS.push_back(BB);
 
     // Spostare l’istruzione candidata nel preheader se tutte le istruzioni invarianti da cui questa dipende sono state spostate
-    BasicBlock *Preheader = LI.getLoopFor(&F.getEntryBlock())->getLoopPreheader();
+    Loop *L = LI.getLoopFor(&F.getEntryBlock());
+      if (L){
+      BasicBlock *Preheader = L->getLoopPreheader();
     if (Preheader) {
       std::vector<Instruction*> moved; // per istruzioni già spostate
       for (Instruction *Inst : Candidates) {
@@ -362,7 +364,7 @@ struct TestPass: PassInfoMixin<TestPass> {
         }
       }
     }
-  
+}
 
 
 
