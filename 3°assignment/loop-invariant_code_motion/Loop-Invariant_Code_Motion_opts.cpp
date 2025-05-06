@@ -71,7 +71,7 @@ struct TestPass: PassInfoMixin<TestPass> {
     while(!changedNodes.empty())
     {
       BasicBlock &bi = *(changedNodes.front());
-      changedNodes.pop_back();
+      changedNodes.erase(changedNodes.begin()); //FIFO
 
       std::set<Instruction*> ini; //in[i]
       //Scorro i predecessori
@@ -90,25 +90,23 @@ struct TestPass: PassInfoMixin<TestPass> {
         {
           geni.insert(&inst);
         }
-        for (Instruction *instPtr : ini)
-        {
-          Instruction &instAdd = *instPtr;
-          if (&inst == &instAdd)
+        for (Instruction *inInst : ini) {
+          if (inInst->getName() == inst.getName()) 
           {
-            killi.insert(&instAdd);
+            killi.insert(inInst);
           }
         }
       }
 
       //Calcolo out[i]=gen[i]U(in[i]-kill[i]) 
-      std::set<Instruction*> in_minus_kill;
-      std::set_difference(ini.begin(), ini.end(),
-                          killi.begin(), killi.end(),
-                          std::inserter(in_minus_kill, in_minus_kill.begin()));
-        
-      std::set<Instruction*> outi;
-      outi.insert(geni.begin(), geni.end());
-      outi.insert(in_minus_kill.begin(), in_minus_kill.end());
+      std::set<Instruction*> outi = geni;
+      for (Instruction *inInst : ini) 
+      {
+        if (killi.find(inInst) == killi.end()) 
+        {
+          outi.insert(inInst);
+        }
+      }
 
       //Controllo se out[i] è cambiato
       if (rd[&bi].second != outi)
@@ -137,59 +135,73 @@ struct TestPass: PassInfoMixin<TestPass> {
 
     for (Loop *L: LI)
     {
-      for (BasicBlock *BB : L->blocks()) 
-      {
-        const auto BBrd = rd.at(BB).first; //in[BB]
 
-        for (Instruction& Inst : *BB)
+      std::set<Instruction*> alreadyInvariant;
+
+      bool changed;
+
+      do {
+
+        changed = false;
+
+        for (BasicBlock *BB : L->blocks()) 
         {
-          bool isLoopInvariant = true;
+          const auto &BBrd = rd.at(BB).first; //in[BB]
 
-          for (auto *Iter = Inst.op_begin(); Iter != Inst.op_end(); ++Iter) {
-            Value *Operand = *Iter;
-            
-            //Se l'operando è un'istruzione
-            if (Instruction* opInst = dyn_cast<Instruction>(Operand))
+          for (Instruction& Inst : *BB)
+          {
+
+            //delta function, se l'istruzione è già stata marcata vado avanti
+            if (std::any_of(LII.begin(), LII.end(),
+                          [&](auto &p) { return p.first == &Inst && p.second == L; }))
+                          continue;
+          
+            bool isLoopInvariant = true;
+
+            for (Value* Operand : Inst.operands()) 
             {
-              if (L->contains(opInst->getParent())) 
+            
+              //Se l'operando è un'istruzione
+              if (Instruction* opInst = dyn_cast<Instruction>(Operand))
               {
-                //Verifico se è loop-invariant (deve essere già nella lista)
-                bool found = false;
-                for (const auto &pair : LII) 
+                //Operando definito nel loop
+                if (L->contains(opInst->getParent())) 
                 {
-                    if (pair.first == opInst && pair.second == L) {
-                        found = true;
-                        break;
-                    }
-                }
-                
-                if (!found) 
-                {
+                  //Verifico se è loop-invariant (deve essere già nella lista)
+                  if (alreadyInvariant.find(opInst) == alreadyInvariant.end())
+                  {
                     isLoopInvariant = false;
                     break;
-                }
-              } 
-              //Se la definizione viene da fuori il loop, verifica che sia nelle reaching definitions
-              else 
-              {
-                if (BBrd.find(opInst) == BBrd.end()) 
+                  }
+                } 
+                //Se la definizione viene da fuori il loop, verifica che sia nelle reaching definitions
+                else 
                 {
+                  //Se l'operando è definito fuori dal loop, guardo se arriva a questa istruzione
+                  if (BBrd.find(opInst) == BBrd.end()) 
+                  {
                     isLoopInvariant = false;
                     break;
+                  }
+                }
+              } else { //Se non è una istruzione, deve essere una costante o argomento
+                if (!isa<Constant>(Operand) && !isa<Argument>(Operand))
+                {
+                  isLoopInvariant = false;
+                  break;
                 }
               }
-            } else { //Se non è una istruzione
-              isLoopInvariant = false;
-              break;
-            }
           
-          }
+            }
 
-          if (isLoopInvariant) {
-            LII.emplace_back(&Inst, L);
+            if (isLoopInvariant) {
+              LII.emplace_back(&Inst, L);
+              alreadyInvariant.insert(&Inst);
+              changed = true; //L'ho aggiunta, quindi è cambiato
+            }
           }
         }
-      }
+      } while (changed); //Finchè cambia
     }
     return LII;
   }
@@ -274,20 +286,22 @@ struct TestPass: PassInfoMixin<TestPass> {
     
 */
 
-    LoopInfo &LI = AM.getResult<LoopAnalysis>(F);
-    DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F);
-    std::map<BasicBlock*,std::pair<std::set<Instruction*>,std::set<Instruction*>>> rd = getReachingDefinitions(F);
-    //Istruzioni Loop-Invariant
-    std::vector<std::pair<Instruction*,Loop*>> LII = getLoopInvariants(LI,rd);
-    std::vector<Instruction *> Candidates
-    
-    std::vector<BasicBlock *> ExitBlocks;
-    for (Loop *L : LI) {
-      for (BasicBlock *BB : L->blocks()) {
-        for (BasicBlock *Succ : successors(BB))
-          if (!L->contains(Succ)) ExitBlocks.push_back(Succ);
-      }
+  LoopInfo &LI = AM.getResult<LoopAnalysis>(F);
+  DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F);
+  std::map<BasicBlock*,std::pair<std::set<Instruction*>,std::set<Instruction*>>> rd = getReachingDefinitions(F);
+  //Istruzioni Loop-Invariant
+  std::vector<std::pair<Instruction*,Loop*>> LII = getLoopInvariants(LI,rd);
+  std::vector<Instruction *> Candidates;
+
+  std::vector<BasicBlock *> ExitBlocks;
+  for (Loop *L : LI) {
+    for (BasicBlock *BB : L->blocks()) {
+      for (BasicBlock *Succ : successors(BB))
+        if (!L->contains(Succ)) ExitBlocks.push_back(Succ);
     }
+  }
+
+  errs() << "Numero di loop trovati: " << LII.size() << "\n";
 
     
 
