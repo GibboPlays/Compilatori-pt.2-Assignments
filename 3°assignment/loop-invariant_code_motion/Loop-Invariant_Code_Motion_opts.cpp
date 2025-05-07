@@ -209,7 +209,7 @@ struct TestPass: PassInfoMixin<TestPass> {
   // Main entry point, takes IR unit to run the pass on (&F) and the
   // corresponding pass manager (to be queried if need be)
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM) {
-<<<<<<< HEAD
+//<<<<<<< HEAD
 
 /* Lab_3
 
@@ -375,8 +375,7 @@ struct TestPass: PassInfoMixin<TestPass> {
       BBOrdinatiDFS.push_back(BB);
 
     // Spostare l’istruzione candidata nel preheader se tutte le istruzioni invarianti da cui questa dipende sono state spostate
-    Loop *L = LI.getLoopFor(&F.getEntryBlock());
-      if (L){
+    for (auto *L : LI) {
       BasicBlock *Preheader = L->getLoopPreheader();
       if (Preheader) {
         std::vector<Instruction*> moved; // per istruzioni già spostate
