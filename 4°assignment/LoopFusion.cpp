@@ -31,6 +31,7 @@
 #include "llvm/Analysis/PostDominators.h"
 #include "llvm/IR/CFG.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/Analysis/ScalarEvolution.h"
 #include <set>
 
 using namespace llvm;
@@ -110,6 +111,7 @@ struct TestPass: PassInfoMixin<TestPass> {
     DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F); 
     PostDominatorTree &PDT = AM.getResult<PostDominatorTreeAnalysis>(F);
 
+    //Vettore che indica se un loop domina ed è post-dominato dal loop successivo
     SmallVector<bool> CFE;
 
     for (std::pair p : adj)
@@ -132,6 +134,42 @@ struct TestPass: PassInfoMixin<TestPass> {
 
       CFE.push_back(d);
 
+    }
+
+    SmallVector<Loop *, 8> Updated;
+    //Elimino loops che non possono più soddisfare i requisiti
+    for (int i=1; i<adj.size(); i++)
+    {
+      if(CFE[i])
+      {
+        bool found = false;
+        for (Loop* comp : Updated)
+        {
+          if (adj[i].first != comp)
+            found = true;
+        }
+        if(!found)
+          Updated.push_back(adj[i].first);
+
+        found = false;
+        for (Loop* comp : Updated)
+        {
+          if (adj[i].second != comp)
+            found = true;
+        }
+        if(!found)
+          Updated.push_back(adj[i].second);
+      }
+    }
+
+    //Loop Trip Count
+    ScalarEvolution &SE = AM.getResult<ScalarEvolutionAnalysis>(F);
+
+    SmallVector<unsigned, 8> LTC;
+    
+    for (Loop* l : Updated)
+    {
+      LTC.push_back(SE.getSmallConstantTripCount(l));
     }
 
   	return PreservedAnalyses::all();
