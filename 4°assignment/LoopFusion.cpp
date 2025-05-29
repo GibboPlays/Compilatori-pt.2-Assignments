@@ -164,13 +164,49 @@ struct TestPass: PassInfoMixin<TestPass> {
 
     //Loop Trip Count
     ScalarEvolution &SE = AM.getResult<ScalarEvolutionAnalysis>(F);
-
-    SmallVector<unsigned, 8> LTC;
+    std::map<Loop*, unsigned> TripCount; // uso mappa per facilitare la dependence analysis
+    //SmallVector<unsigned, 8> LTC;
     
     for (Loop* l : Updated)
     {
-      LTC.push_back(SE.getSmallConstantTripCount(l));
+      unsigned TC = SE.getSmallConstantTripCount(l);
+      if (TC > 0) TripCount[l] = TC;
     }
+
+    //Dependence Analysis
+    SmallVector<Loop *, 8> Fusable;
+    DependenceInfo &DI = AM.getResult<DependenceAnalysis>(F);
+    for (int i = 0; i < Updated.size()-1; ++i) {
+      Loop *l1 = Updated[i];
+      Loop *l2 = Updated[i+1];
+      if (TripCount.count(l1) == 0 || TripCount.count(l2) == 0) continue; // è necessario o posso toglierlo?
+      bool hasNegativeDependence = false;
+      for (auto *bb1 : l1->blocks()){
+        for (auto &i1 : *bb1){
+          for (auto *bb2 : l2->blocks()){
+            for (auto &i2 : *bb2){
+              if(auto dep = DI.depends(&I1, &I2, true))
+                if (dep->getDistance() && dep->getDistance()->isNegative())
+                {
+                  hasNegativeDependence = True;
+                  break;
+                }
+            }
+            if (hasNegativeDependence) break;
+          }
+          if (hasNegativeDependence) break;
+        }
+        if (hasNegativeDependence) break;
+      }
+      if (!hasNegativeDependence) {
+        // Fusable potrebbe contenere dei duplicati... è un problema?
+        Fusable.push_back(l1);
+        Fusable.push_back(l2);
+      }
+    }
+    
+    //Trasformazione del codice
+    //...
 
   	return PreservedAnalyses::all();
   }
