@@ -32,6 +32,7 @@
 #include "llvm/IR/CFG.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/ScalarEvolution.h"
+#include "llvm/Analysis/DependenceAnalysis.h"
 #include <set>
 #include <map>
 
