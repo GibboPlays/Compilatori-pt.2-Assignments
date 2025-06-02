@@ -490,7 +490,11 @@ CMakeFiles/LoopFusion.cpp.dir/LoopFusion.cpp.o: ../LoopFusion.cpp \
   /usr/include/llvm-19/llvm/IR/ProfileSummary.h \
   /usr/include/llvm-19/llvm/IR/Dominators.h \
   /usr/include/llvm-19/llvm/ADT/DepthFirstIterator.h \
-  /usr/include/llvm-19/llvm/Analysis/PostDominators.h
+  /usr/include/llvm-19/llvm/Analysis/PostDominators.h \
+  /usr/include/llvm-19/llvm/Analysis/DependenceAnalysis.h \
+  /usr/include/c++/11/map \
+  /usr/include/c++/11/bits/stl_map.h \
+  /usr/include/c++/11/bits/stl_multimap.h
 
 
 /usr/include/llvm-19/llvm/Analysis/PostDominators.h:
@@ -506,6 +510,8 @@ CMakeFiles/LoopFusion.cpp.dir/LoopFusion.cpp.o: ../LoopFusion.cpp \
 /usr/include/llvm-19/llvm/Analysis/TargetTransformInfo.h:
 
 /usr/include/llvm-19/llvm/Support/MemoryBuffer.h:
+
+/usr/include/c++/11/map:
 
 /usr/include/llvm-19/llvm/ADT/FoldingSet.h:
 
@@ -751,6 +757,8 @@ CMakeFiles/LoopFusion.cpp.dir/LoopFusion.cpp.o: ../LoopFusion.cpp \
 
 /usr/include/llvm-19/llvm/ADT/StringMap.h:
 
+/usr/include/c++/11/bits/stl_map.h:
+
 /usr/include/llvm-19/llvm/IR/InstrTypes.h:
 
 /usr/include/llvm-19/llvm/Analysis/TargetLibraryInfo.h:
@@ -760,6 +768,8 @@ CMakeFiles/LoopFusion.cpp.dir/LoopFusion.cpp.o: ../LoopFusion.cpp \
 /usr/include/llvm-19/llvm/Support/TypeName.h:
 
 /usr/include/llvm-19/llvm/ADT/PointerIntPair.h:
+
+/usr/include/c++/11/bits/stl_multimap.h:
 
 /usr/include/llvm-19/llvm/ADT/iterator_range.h:
 
@@ -904,6 +914,8 @@ CMakeFiles/LoopFusion.cpp.dir/LoopFusion.cpp.o: ../LoopFusion.cpp \
 /usr/include/c++/11/bits/string_view.tcc:
 
 /usr/include/c++/11/cassert:
+
+/usr/include/llvm-19/llvm/Analysis/DependenceAnalysis.h:
 
 /usr/include/llvm-19/llvm/IR/ConstantFolder.h:
 

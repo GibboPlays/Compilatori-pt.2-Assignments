@@ -117,49 +117,33 @@ struct TestPass: PassInfoMixin<TestPass> {
 
     for (std::pair p : adj)
     {
-      bool d = false;
-      //Ultima istruzione del primo loop
-      Loop *l1 = p.first;
-      BasicBlock *b1 = l1->getExitBlock();
-      const Instruction &i1 = b1->back();
+      Loop *L0 = p.first;
+      Loop *L1 = p.second;
 
-      //Prima istruzione del secondo loop
-      Loop *l2 = p.second;
-      BasicBlock *b2 = l2->getHeader();
-      const Instruction &i2 = b2->front();
+      BasicBlock *H0 = L0->getHeader();
+      BasicBlock *H1 = L1->getHeader();
 
-      if (DT.dominates(b1,b2) && PDT.dominates(&i2,&i1))
-      {
-        d = true;
+      bool equiv = false;
+
+      if (DT.dominates(H0, H1) && PDT.dominates(H1, H0)) {
+          equiv = true;
       }
 
-      CFE.push_back(d);
+    CFE.push_back(equiv);
 
     }
 
     SmallVector<Loop *, 8> Updated;
     //Elimino loops che non possono più soddisfare i requisiti
-    for (int i=1; i<adj.size(); i++)
+    for (int i=0; i<adj.size(); i++)
     {
-      if(CFE[i])
+      if (CFE[i]) 
       {
-        bool found = false;
-        for (Loop* comp : Updated)
-        {
-          if (adj[i].first != comp)
-            found = true;
-        }
-        if(!found)
-          Updated.push_back(adj[i].first);
+        if (std::find(Updated.begin(), Updated.end(), adj[i].first) == Updated.end())
+            Updated.push_back(adj[i].first);
 
-        found = false;
-        for (Loop* comp : Updated)
-        {
-          if (adj[i].second != comp)
-            found = true;
-        }
-        if(!found)
-          Updated.push_back(adj[i].second);
+        if (std::find(Updated.begin(), Updated.end(), adj[i].second) == Updated.end())
+            Updated.push_back(adj[i].second);
       }
     }
 

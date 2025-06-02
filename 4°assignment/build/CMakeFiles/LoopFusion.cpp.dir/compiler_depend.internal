@@ -492,4 +492,8 @@ CMakeFiles/LoopFusion.cpp.dir/LoopFusion.cpp.o
  /usr/include/llvm-19/llvm/IR/Dominators.h
  /usr/include/llvm-19/llvm/ADT/DepthFirstIterator.h
  /usr/include/llvm-19/llvm/Analysis/PostDominators.h
+ /usr/include/llvm-19/llvm/Analysis/DependenceAnalysis.h
+ /usr/include/c++/11/map
+ /usr/include/c++/11/bits/stl_map.h
+ /usr/include/c++/11/bits/stl_multimap.h
 
