@@ -91,9 +91,10 @@ struct TestPass: PassInfoMixin<TestPass> {
     }
 
     errs() << "adj ha size " << adj.size() << "\n";
-    
+
+    SmallVector<Loop*, 8> Filtered;
     for (Loop* l : Worklist){
-      bool found=false;
+      bool found = false;
       for (const auto &p : adj) {
         if (p.first == l || p.second == l)
           found = true;
