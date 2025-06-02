@@ -66,46 +66,44 @@ struct TestPass: PassInfoMixin<TestPass> {
           Worklist.push_back(L);
       }
     }
+    errs() << "Worklist ha size " << Worklist.size() << "\n";
     
     //Checking conditions
 
     //Adjacent
     SmallVector<std::pair<Loop*,Loop*>> adj;
 
-    for (int i=0; i<7; i++)
-    {
-
+    for (size_t i = 0; i + 1 < Worklist.size(); i++) {
       //Ultimo basic block del primo loop
+      errs() << "Cerco adiacenze tra: "
+         << Worklist[i]->getHeader()->getName() << " e "
+         << Worklist[i+1]->getHeader()->getName() << "\n";
       Loop *l1 = Worklist[i];
       BasicBlock *b1 = l1->getExitBlock();
       //Primo basic block del secondo loop
       Loop *l2 = Worklist[i+1];
       BasicBlock *b2 = l2->getHeader();
-
+      if (!b1 || !b2) continue;
       if (b1->getSingleSuccessor() == b2->getSinglePredecessor())
       {
         adj.push_back(std::make_pair(l1,l2));
       }
     }
 
-    for(int i=0; i<8; i++)
-    {
+    errs() << "adj ha size " << adj.size() << "\n";
+    
+    for (Loop* l : Worklist){
       bool found=false;
-      Loop *l = Worklist[i];
-
-      for (std::pair p : adj)
-      {
-        if(p.first==l || p.second==l)
-        {
-          found=true;
-        }
+      for (const auto &p : adj) {
+        if (p.first == l || p.second == l)
+          found = true;
       }
-
-      if (!found)
-      {
-        Worklist.erase(Worklist.begin() + i); 
-      }
+      if (found)
+        //Worklist.erase(Worklist.begin() + i);
+        Filtered.push_back(l);
     }
+    Worklist = Filtered;
+    errs() << "Worklist (aggiornato dopo adiacenze) ha size " << Worklist.size() << "\n";
 
     //Control Flow Equivalent
     DominatorTree &DT = AM.getResult<DominatorTreeAnalysis>(F); 
@@ -162,6 +160,8 @@ struct TestPass: PassInfoMixin<TestPass> {
       }
     }
 
+    errs() << "Updated (dopo CFE) ha size " << Updated.size() << "\n";
+
     //Loop Trip Count
     ScalarEvolution &SE = AM.getResult<ScalarEvolutionAnalysis>(F);
     std::map<Loop*, unsigned> TripCount; // uso mappa per facilitare la dependence analysis
@@ -172,6 +172,8 @@ struct TestPass: PassInfoMixin<TestPass> {
       unsigned TC = SE.getSmallConstantTripCount(l);
       if (TC > 0) TripCount[l] = TC;
     }
+
+    errs() << "Ho fatto TripCount\n";
 
     //Dependence Analysis
     SmallVector<Loop *, 8> Fusable;
@@ -200,13 +202,44 @@ struct TestPass: PassInfoMixin<TestPass> {
       }
       if (!hasNegativeDependence) {
         // Fusable potrebbe contenere dei duplicati... è un problema?
-        Fusable.push_back(l1);
-        Fusable.push_back(l2);
+        Fusable.push_back({l1, l2});
       }
     }
+
+    errs() << "Fusable ha size " << Fusable.size() << "\n";
     
     //Trasformazione del codice
-    //...
+    for (auto &p : Fusable){
+      Loop *l1 = p.first;
+      Loop *l2 = p.second;
+
+      //Controlli sulla struttura dei loop
+      SmallVector<BasicBlock *, 2> latches1, latches2;
+      l1->getLoopLatches(latches1);
+      l2->getLoopLatches(latches2);
+      if (latches1.size() != 1 || latches2.size() != 1) continue;
+      BasicBlock *latch1 = latches1[0];
+      BasicBlock *header2 = l2->getHeader();
+      BasicBlock *preheader2 = l2->getLoopPreheader();
+      if (!latch1 || !header2 || !preheader2) continue;
+
+      //Modificare gli usi
+      PHINode *IV1 = l1->getInductionVariable(SE);
+      PHINode *IV2 = l2->getInductionVariable(SE);
+      if (!IV1 || !IV2) continue;
+      IV2->replaceAllUsesWith(IV1);
+
+      //Modificare il CFG
+      Instruction *Term = latch1->getTerminator();
+      for (unsigned i = 0; i < Term->getNumSuccessors(); ++i) {
+        if (Term->getSuccessor(i) == l1->getHeader()) { // se il salto torna all'inizio del loop
+          Term->setSuccessor(i, header2);
+          break;
+        }
+      }
+      preheader2->eraseFromParent(); // rimuovo il preheader che non serve più
+      LI.erase(l2); // rimuovo l2 che non serve più
+    }
 
   	return PreservedAnalyses::all();
   }
