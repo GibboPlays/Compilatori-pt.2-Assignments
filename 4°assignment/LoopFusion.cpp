@@ -33,6 +33,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include <set>
+#include <map>
 
 using namespace llvm;
 
@@ -177,9 +178,9 @@ struct TestPass: PassInfoMixin<TestPass> {
     errs() << "Ho fatto TripCount\n";
 
     //Dependence Analysis
-    SmallVector<Loop *, 8> Fusable;
+    SmallVector<std::pair<Loop*, Loop*>, 8> Fusable;
     DependenceInfo &DI = AM.getResult<DependenceAnalysis>(F);
-    for (int i = 0; i < Updated.size()-1; ++i) {
+    for (size_t i = 0; i + 1 < Updated.size(); ++i) {
       Loop *l1 = Updated[i];
       Loop *l2 = Updated[i+1];
       if (TripCount.count(l1) == 0 || TripCount.count(l2) == 0) continue; // è necessario o posso toglierlo?
@@ -188,11 +189,17 @@ struct TestPass: PassInfoMixin<TestPass> {
         for (auto &i1 : *bb1){
           for (auto *bb2 : l2->blocks()){
             for (auto &i2 : *bb2){
-              if(auto dep = DI.depends(&I1, &I2, true))
-                if (dep->getDistance() && dep->getDistance()->isNegative())
-                {
-                  hasNegativeDependence = True;
-                  break;
+              if(auto dep = DI.depends(&i1, &i2, true))
+                for (unsigned level = 1; level <= dep->getLevels(); ++level) {
+                  if (const auto *sc = dyn_cast<llvm::SCEVConstant>(dep->getDistance(level))) {
+                    if (sc->getAPInt().isNegative()) {
+                      hasNegativeDependence = true;
+                      break;
+                    }
+                  } else { // se la distanza non è costante potrebbero esserci dei problemi, quindi lo considero errore
+                    hasNegativeDependence = true;
+                    break;
+                  }
                 }
             }
             if (hasNegativeDependence) break;
