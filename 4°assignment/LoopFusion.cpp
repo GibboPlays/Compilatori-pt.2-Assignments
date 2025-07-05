@@ -54,7 +54,6 @@ struct TestPass: PassInfoMixin<TestPass> {
   // Main entry point, takes IR unit to run the pass on (&F) and the
   // corresponding pass manager (to be queried if need be)
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM) {
-//<<<<<<< HEAD
 
     LoopInfo &LI = AM.getResult<LoopAnalysis>(F);
 
@@ -125,7 +124,7 @@ struct TestPass: PassInfoMixin<TestPass> {
 
       bool equiv = false;
 
-      if (DT.dominates(H0, H1) && PDT.dominates(H1, H0)) {
+      if (DT.dominates(H0, H1) && PDT.dominates(H1, H0) || DT.dominates(H1, H0) && PDT.dominates(H0, H1)) { // ordine dei loop in Worklist può essere diverso
           equiv = true;
       }
 
@@ -169,31 +168,21 @@ struct TestPass: PassInfoMixin<TestPass> {
       Loop *l1 = Updated[i];
       Loop *l2 = Updated[i+1];
       if (TripCount.count(l1) == 0 || TripCount.count(l2) == 0) continue; // è necessario o posso toglierlo?
-      bool hasNegativeDependence = false;
+      bool hasDependence = false;
       for (auto *bb1 : l1->blocks()){
         for (auto &i1 : *bb1){
           for (auto *bb2 : l2->blocks()){
             for (auto &i2 : *bb2){
-              if(auto dep = DI.depends(&i1, &i2, true))
-                for (unsigned level = 1; level <= dep->getLevels(); ++level) {
-                  if (const auto *sc = dyn_cast<llvm::SCEVConstant>(dep->getDistance(level))) {
-                    if (sc->getAPInt().isNegative()) {
-                      hasNegativeDependence = true;
-                      break;
-                    }
-                  } else { // se la distanza non è costante potrebbero esserci dei problemi, quindi lo considero errore
-                    hasNegativeDependence = true;
-                    break;
-                  }
-                }
+              if (auto dep = DI.depends(&i1, &i2, true))
+                hasDependence = true;
             }
-            if (hasNegativeDependence) break;
+            if (hasDependence) break;
           }
-          if (hasNegativeDependence) break;
+          if (hasDependence) break;
         }
-        if (hasNegativeDependence) break;
+        if (hasDependence) break;
       }
-      if (!hasNegativeDependence) {
+      if (!hasDependence) {
         // Fusable potrebbe contenere dei duplicati... è un problema?
         Fusable.push_back({l1, l2});
       }
@@ -202,37 +191,201 @@ struct TestPass: PassInfoMixin<TestPass> {
     errs() << "Fusable ha size " << Fusable.size() << "\n";
     
     //Trasformazione del codice
-    for (auto &p : Fusable){
-      Loop *l1 = p.first;
-      Loop *l2 = p.second;
+    for (auto &p : Fusable) {
+      Loop *l1 = p.second;
+      Loop *l2 = p.first;
+      errs() << "   " << l1->getName() << ", " << l2->getName() << "\n";
 
-      //Controlli sulla struttura dei loop
+      // Prendo latch e header
       SmallVector<BasicBlock *, 2> latches1, latches2;
       l1->getLoopLatches(latches1);
       l2->getLoopLatches(latches2);
-      if (latches1.size() != 1 || latches2.size() != 1) continue;
+      if (latches1.size() != 1 || latches2.size() != 1) {
+        errs() << "---Errore size latches\n";
+        continue;
+      }
       BasicBlock *latch1 = latches1[0];
+      BasicBlock *header1 = l1->getHeader();
       BasicBlock *header2 = l2->getHeader();
-      BasicBlock *preheader2 = l2->getLoopPreheader();
-      if (!latch1 || !header2 || !preheader2) continue;
+      //BasicBlock *preheader2 = l2->getLoopPreheader();
+      if (!latch1) {
+        errs() << "---Errore latch1\n";
+        continue;
+      } else if (!header2) {
+        errs() << "---Errore header2\n";
+        continue;
+      } else if (!header1) {
+        errs() << "---Errore header1\n";
+        continue;
+      /*} else if (!preheader2) {
+        errs() << "---Errore preheader2\n";
+        continue;*/
+      }
 
-      //Modificare gli usi
-      PHINode *IV1 = l1->getInductionVariable(SE);
-      PHINode *IV2 = l2->getInductionVariable(SE);
+      errs() << "   Controlli finiti\n";
+
+      // Recupero IV1 e IV2
+      PHINode *IV1 = dyn_cast<PHINode>(header1->begin());
+      PHINode *IV2 = dyn_cast<PHINode>(header2->begin());
       if (!IV1 || !IV2) continue;
-      IV2->replaceAllUsesWith(IV1);
 
-      //Modificare il CFG
-      Instruction *Term = latch1->getTerminator();
-      for (unsigned i = 0; i < Term->getNumSuccessors(); ++i) {
-        if (Term->getSuccessor(i) == l1->getHeader()) { // se il salto torna all'inizio del loop
-          Term->setSuccessor(i, header2);
+      errs() << "   PHI1: " << *IV1 << "\n";
+      errs() << "   PHI2: " << *IV2 << "\n";
+
+      /* Modificare gli usi della induction variable nel body del 
+        loop 2 con quelli della induction variable del loop 1*/
+      for (BasicBlock *BB : l2->blocks()) {
+        if (BB == header2) continue;
+        for (Instruction &I : *BB) {
+          for (unsigned i = 0; i < I.getNumOperands(); ++i) {
+            if (I.getOperand(i) == IV2) {
+              I.setOperand(i, IV1);
+            }
+          }
+        }
+      }
+
+      errs() << "   Modificato usi IV2\n";
+
+      /* Modificare il CFG perché il body del loop 2 sia 
+        agganciato a seguito del body del loop 1 nel loop 1*/
+
+      BasicBlock *body2 = nullptr;
+      BasicBlock *body1 = nullptr;
+      if (BranchInst *br = dyn_cast<BranchInst>(header1->getTerminator())) { // ricavo body1
+        if (br->isConditional()) {
+          BasicBlock *succ0 = br->getSuccessor(0);
+          BasicBlock *succ1 = br->getSuccessor(1);
+          // Supponiamo che il corpo sia il ramo 'true' (condizione vera)
+          if (l1->contains(succ0))
+            body1 = succ0;
+          else if (l1->contains(succ1))
+            body1 = succ1;
+        }
+      }
+      if (BranchInst *br = dyn_cast<BranchInst>(header2->getTerminator())) { // ricavo body2
+        if (br->isConditional()) {
+          BasicBlock *succ0 = br->getSuccessor(0);
+          BasicBlock *succ1 = br->getSuccessor(1);
+          if (l2->contains(succ0))
+            body2 = succ0;
+          else if (l2->contains(succ1))
+            body2 = succ1;
+        }
+      }
+
+            
+      Instruction *term1 = body1->getTerminator();
+      Instruction *term2 = body2->getTerminator();
+
+      errs() << "body1: " << body1->getName() << ". body2: " << body2->getName() << "\n";
+      
+
+      errs() << "Blocchi in l2:\n";
+      for (BasicBlock *BB : l2->blocks()) {
+          errs() << "  " << BB->getName() << "\n";
+          Instruction *term = BB->getTerminator();
+          if (term)
+              errs() << "    terminator: " << *term << "\n";
+      }
+
+
+      // header2 salta a latch2
+      Instruction *termHeader2 = header2->getTerminator();
+      Instruction *Br = nullptr;
+      BasicBlock *latch2 = nullptr;
+      for (BasicBlock *BB : l2->blocks()) {
+        if (BB != header2 && BB != body2) latch2 = BB;
+      }
+      if (termHeader2) termHeader2->eraseFromParent();
+      if (latch2){
+        Br = BranchInst::Create(latch2, header2);
+        errs() << "   header2 salta a latch2 " << *Br << "\n";
+      } else {
+        errs() << "---ERRORE: latch2 non trovato!\n";
+      }
+      
+
+      // body1 salta a body2
+      if (term1){
+        errs() << "   Prima: body1->term = " << *term1 << "\n";
+        term1->eraseFromParent(); 
+      }
+      IRBuilder<> builder(body1);
+      Br = builder.CreateBr(body2);
+      errs() << "   body1 salta a body2: " << *Br << "\n";
+
+      // body2 salta a latch1
+      term2->eraseFromParent();
+      Br = BranchInst::Create(latch1, body2);
+      errs() << "   body2 salta a latch1 " << *Br << "\n";
+
+      // header1 salta a body1 o end
+      //Instruction *termHeader1 = header1->getTerminator();
+      //if (termHeader1) termHeader1->eraseFromParent();
+
+      BasicBlock *endBlock = nullptr; // recupero blocco end (che prima era dopo header2 con condizione falsa)
+      for (BasicBlock &BB : *header1->getParent()) {
+        Instruction *term = BB.getTerminator();
+        if (!term) continue; // salta blocchi malformati
+        if (isa<ReturnInst>(term)) {
+          endBlock = &BB;
+          errs() << "   Blocco end: " << endBlock->getName() << "\n";
           break;
         }
       }
-      preheader2->eraseFromParent(); // rimuovo il preheader che non serve più
-      LI.erase(l2); // rimuovo l2 che non serve più
-    }
+      if (!endBlock) errs() << "   Non ho trovato end!!! ERRORE\n";
+
+      IRBuilder<> builder2(header1);
+      builder2.SetInsertPoint(header1);
+      Instruction *term = header1->getTerminator();
+      if (term) {
+        if (auto *br = dyn_cast<BranchInst>(term)) {
+          Value *cond = nullptr;
+          BasicBlock *trueDest = nullptr;
+          BasicBlock *falseDest = nullptr;
+
+          if (br->isConditional()) {
+            cond = br->getCondition();
+            trueDest = br->getSuccessor(0);
+            falseDest = br->getSuccessor(1);
+          } else {
+            trueDest = br->getSuccessor(0);
+          }
+
+          br->eraseFromParent();
+
+          if (cond && trueDest && endBlock) {
+            Instruction *newBr = BranchInst::Create(trueDest, endBlock, cond, header1);
+            errs() << "   header1 salta a body1 / end (condizione originale mantenuta): " << *newBr << "\n";
+          } else if (trueDest) {
+            Instruction *newBr = BranchInst::Create(trueDest, header1);
+            errs() << "   header1 salta a " << trueDest->getName() << " (branch non condizionale): " << *newBr << "\n";
+          } else {
+            errs() << "---Errore: impossibile creare terminator valido per header1\n";
+          }
+        }
+      }
+      errs() << "   header1 salta a body1 / end\n";
+
+      // modificare PHI node in header2
+      SmallVector<std::pair<Value *, BasicBlock *>, 4> newIncomingIV2;
+      for (unsigned i = 0; i < IV2->getNumIncomingValues(); ++i) {
+        BasicBlock *BB = IV2->getIncomingBlock(i);
+        Value *V = IV2->getIncomingValue(i);
+        if (llvm::is_contained(predecessors(header2), BB)) {
+          newIncomingIV2.push_back({V, BB});
+        }
+      }
+      while (IV2->getNumIncomingValues() > 0)
+        IV2->removeIncomingValue((unsigned)0, false);
+      for (auto &pair : newIncomingIV2)
+        IV2->addIncoming(pair.first, pair.second);
+
+      errs() << "Fusione completata\n";
+
+
+    }  
 
   	return PreservedAnalyses::all();
   }
