@@ -1,38 +1,42 @@
-define void @two_loops_cfe_compliant(i32* %A, i32 %N) {
+@A = global [100 x i32] zeroinitializer
+@B = global [100 x i32] zeroinitializer
+
+define void @two_loops() {
 entry:
-  br label %common.entry_point
+  br label %loop1_header
 
-common.entry_point:
-  %i_common = phi i32 [ 0, %entry ], [ %i_common_next, %common.exit_point ]
-  br label %loop1.header
+loop1_header:
+  %i1 = phi i32 [ 0, %entry ], [ %i1_next, %loop1_latch ]
+  %cond1 = icmp slt i32 %i1, 100
+  br i1 %cond1, label %loop1_body, label %loop2_header
 
-loop1.header:
-  %i1 = phi i32 [ %i_common, %common.entry_point ], [ %i1.next, %loop1.latch ]
-  %val1 = load i32, i32* %A
-  %i1.next = add i32 %i1, 1
-  %cond1 = icmp slt i32 %i1, %N
-  br i1 %cond1, label %loop1.latch, label %loop2.header
+loop1_body:
+  %a_ptr = getelementptr inbounds [100 x i32], [100 x i32]* @A, i32 0, i32 %i1
+  %a_val = load i32, i32* %a_ptr
+  %a_add = add i32 %a_val, 1
+  store i32 %a_add, i32* %a_ptr
+  %i1_next = add i32 %i1, 1
+  br label %loop1_latch
 
-loop1.latch:
-  store i32 %i1, i32* %A
-  br label %loop1.header
+loop1_latch:
+  br label %loop1_header
 
-loop2.header:
-  %i2 = phi i32 [ %i_common, %loop1.header ], [ %i2.next, %loop2.latch ]
-  %val2 = load i32, i32* %A
-  %i2.next = add i32 %i2, 1
-  %cond2 = icmp slt i32 %i2, %N
-  br i1 %cond2, label %loop2.latch, label %common.exit_point
+loop2_header:
+  %i2 = phi i32 [ 0, %loop1_header ], [ %i2_next, %loop2_latch ]
+  %cond2 = icmp slt i32 %i2, 100
+  br i1 %cond2, label %loop2_body, label %end
 
-loop2.latch:
-  store i32 %i2, i32* %A
-  br label %loop2.header
+loop2_body:
+  %b_ptr = getelementptr inbounds [100 x i32], [100 x i32]* @B, i32 0, i32 %i2
+  %b_val = load i32, i32* %b_ptr
+  %b_add = add i32 %b_val, 1
+  store i32 %b_add, i32* %b_ptr
+  %i2_next = add i32 %i2, 1
+  br label %loop2_latch
 
-common.exit_point:
-  %i_common_next = add i32 %i_common, 1
-  %cond_common = icmp slt i32 %i_common_next, %N
-  br i1 %cond_common, label %common.entry_point, label %final.exit
+loop2_latch:
+  br label %loop2_header
 
-final.exit:
+end:
   ret void
 }
