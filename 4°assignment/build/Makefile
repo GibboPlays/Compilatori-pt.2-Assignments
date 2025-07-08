@@ -57,10 +57,10 @@ RM = /usr/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /home/gibbo_plays/Laboratorio_compilatori/Assignments/4°assignment
+CMAKE_SOURCE_DIR = /mnt/c/Users/Utente/Desktop/Compilatori-pt.2-Assignments-1/4°assignment
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /home/gibbo_plays/Laboratorio_compilatori/Assignments/4°assignment/build
+CMAKE_BINARY_DIR = /mnt/c/Users/Utente/Desktop/Compilatori-pt.2-Assignments-1/4°assignment/build
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -87,9 +87,9 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/gibbo_plays/Laboratorio_compilatori/Assignments/4°assignment/build/CMakeFiles /home/gibbo_plays/Laboratorio_compilatori/Assignments/4°assignment/build//CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/Utente/Desktop/Compilatori-pt.2-Assignments-1/4°assignment/build/CMakeFiles /mnt/c/Users/Utente/Desktop/Compilatori-pt.2-Assignments-1/4°assignment/build//CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /home/gibbo_plays/Laboratorio_compilatori/Assignments/4°assignment/build/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /mnt/c/Users/Utente/Desktop/Compilatori-pt.2-Assignments-1/4°assignment/build/CMakeFiles 0
 .PHONY : all
 
 # The main clean target

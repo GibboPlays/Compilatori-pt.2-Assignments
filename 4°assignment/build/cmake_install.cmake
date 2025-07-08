@@ -1,4 +1,4 @@
-# Install script for directory: /home/gibbo_plays/Laboratorio_compilatori/Assignments/4°assignment
+# Install script for directory: /mnt/c/Users/Utente/Desktop/Compilatori-pt.2-Assignments-1/4°assignment
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)
@@ -50,5 +50,5 @@ endif()
 
 string(REPLACE ";" "\n" CMAKE_INSTALL_MANIFEST_CONTENT
        "${CMAKE_INSTALL_MANIFEST_FILES}")
-file(WRITE "/home/gibbo_plays/Laboratorio_compilatori/Assignments/4°assignment/build/${CMAKE_INSTALL_MANIFEST}"
+file(WRITE "/mnt/c/Users/Utente/Desktop/Compilatori-pt.2-Assignments-1/4°assignment/build/${CMAKE_INSTALL_MANIFEST}"
      "${CMAKE_INSTALL_MANIFEST_CONTENT}")

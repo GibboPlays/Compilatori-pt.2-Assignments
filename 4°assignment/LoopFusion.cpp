@@ -142,37 +142,21 @@ struct TestPass: PassInfoMixin<TestPass> {
 
     //Vettore che indica se un loop domina ed è post-dominato dal loop successivo
     SmallVector<bool> CFE;
+    SmallVector<std::pair<Loop*,Loop*>>  Updated; // coppie di loop con control flow equivalente
 
     for (std::pair p : adj)
     {
-      Loop *L0 = p.first;
-      Loop *L1 = p.second;
-
+      Loop *L0 = p.second;
+      Loop *L1 = p.first;
       BasicBlock *H0 = L0->getHeader();
       BasicBlock *H1 = L1->getHeader();
-
       bool equiv = false;
 
-      if (DT.dominates(H0, H1) && PDT.dominates(H1, H0) || DT.dominates(H1, H0) && PDT.dominates(H0, H1)) { // ordine dei loop in Worklist può essere diverso
-          equiv = true;
+      if (DT.dominates(H0, H1) && PDT.dominates(H1, H0)) { // dominanza e post dominanza
+        equiv = true;
+        Updated.push_back(std::make_pair(L0, L1));
       }
-
-    CFE.push_back(equiv);
-
-    }
-
-    SmallVector<Loop *, 8> Updated;
-    //Elimino loops che non possono più soddisfare i requisiti
-    for (int i=0; i<adj.size(); i++)
-    {
-      if (CFE[i]) 
-      {
-        if (std::find(Updated.begin(), Updated.end(), adj[i].first) == Updated.end())
-            Updated.push_back(adj[i].first);
-
-        if (std::find(Updated.begin(), Updated.end(), adj[i].second) == Updated.end())
-            Updated.push_back(adj[i].second);
-      }
+      CFE.push_back(equiv);
     }
 
     errs() << "Updated (dopo CFE) ha size " << Updated.size() << "\n";
@@ -180,12 +164,15 @@ struct TestPass: PassInfoMixin<TestPass> {
     //Loop Trip Count
     ScalarEvolution &SE = AM.getResult<ScalarEvolutionAnalysis>(F);
     std::map<Loop*, unsigned> TripCount; // uso mappa per facilitare la dependence analysis
-    //SmallVector<unsigned, 8> LTC;
     
-    for (Loop* l : Updated)
+    for (std::pair p : Updated)
     {
-      unsigned TC = SE.getSmallConstantTripCount(l);
-      if (TC > 0) TripCount[l] = TC;
+      Loop *L0 = p.second;
+      Loop *L1 = p.first;
+      unsigned TC0 = SE.getSmallConstantTripCount(L0);
+      unsigned TC1 = SE.getSmallConstantTripCount(L1);
+      if (TC0 > 0) TripCount[L0] = TC0;
+      if (TC1 > 0) TripCount[L1] = TC1;
     }
 
     errs() << "Ho fatto TripCount\n";
@@ -193,9 +180,9 @@ struct TestPass: PassInfoMixin<TestPass> {
     //Dependence Analysis
     SmallVector<std::pair<Loop*, Loop*>, 8> Fusable;
     DependenceInfo &DI = AM.getResult<DependenceAnalysis>(F);
-    for (size_t i = 0; i + 1 < Updated.size(); ++i) {
-      Loop *l1 = Updated[i];
-      Loop *l2 = Updated[i+1];
+    for (std::pair p : Updated) {
+      Loop *l1 = p.second;
+      Loop *l2 = p.first;
       if (TripCount.count(l1) == 0 || TripCount.count(l2) == 0) continue; // è necessario o posso toglierlo?
       bool hasDependence = false;
       for (auto *bb1 : l1->blocks()){
