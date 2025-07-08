@@ -80,12 +80,32 @@ struct TestPass: PassInfoMixin<TestPass> {
          << Worklist[i]->getHeader()->getName() << " e "
          << Worklist[i+1]->getHeader()->getName() << "\n";
       Loop *l1 = Worklist[i];
-      BasicBlock *b1 = l1->getExitBlock();
+      BasicBlock *b1header = l1->getHeader();
+      BasicBlock *b1exitblock = l1->getExitBlock();
       //Primo basic block del secondo loop
       Loop *l2 = Worklist[i+1];
-      BasicBlock *b2 = l2->getHeader();
-      if (!b1 || !b2) continue;
-      if (b1->getSingleSuccessor() == b2->getSinglePredecessor())
+      BasicBlock *b2header = l2->getHeader();
+      BasicBlock *b2preheader = l2->getLoopPreheader();
+      if (!b1header || !b1exitblock || !b2header || !b2preheader) continue;
+      //Guarded
+      BasicBlock *b1headersuccessor = nullptr;
+      if (BranchInst *br = dyn_cast<BranchInst>(b1header->getTerminator()))
+      {
+        if (br->isConditional()) {
+          BasicBlock *succ0 = br->getSuccessor(0);
+          BasicBlock *succ1 = br->getSuccessor(1);
+          // Supponiamo che il corpo sia il ramo 'true' (condizione vera)
+          if (l1->contains(succ0))
+            b1headersuccessor = succ1;
+          else if (l1->contains(succ1))
+            b1headersuccessor = succ0;
+        }
+      }
+      if (b1headersuccessor == b2header)
+      {
+        adj.push_back(std::make_pair(l1,l2));
+      } //Not guarded
+      else if (b1exitblock == b2preheader)
       {
         adj.push_back(std::make_pair(l1,l2));
       }

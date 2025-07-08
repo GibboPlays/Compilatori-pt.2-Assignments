@@ -58,6 +58,7 @@
         "__verbose_abort": "cpp",
         "ios": "cpp",
         "locale": "cpp",
-        "deque": "cpp"
+        "deque": "cpp",
+        "unordered_set": "cpp"
     }
 }
