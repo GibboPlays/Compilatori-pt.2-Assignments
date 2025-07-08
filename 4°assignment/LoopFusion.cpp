@@ -112,11 +112,11 @@ struct TestPass: PassInfoMixin<TestPass> {
       }
       if (b1headersuccessor == b2header)
       {
-        adj.push_back(std::make_pair(l1,l2));
+        adj.push_back(std::make_pair(l2, l1));
       } //Not guarded
       else if (b1exitblock == b2preheader)
       {
-        adj.push_back(std::make_pair(l1,l2));
+        adj.push_back(std::make_pair(l2, l1));
       }
     }
 
