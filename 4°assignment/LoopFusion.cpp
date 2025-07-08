@@ -79,13 +79,22 @@ struct TestPass: PassInfoMixin<TestPass> {
       errs() << "Cerco adiacenze tra: "
          << Worklist[i]->getHeader()->getName() << " e "
          << Worklist[i+1]->getHeader()->getName() << "\n";
-      Loop *l1 = Worklist[i];
+      Loop *l1 = Worklist[i+1];
       BasicBlock *b1header = l1->getHeader();
+      errs() << "b1header: " << b1header->getName() << "\n";
       BasicBlock *b1exitblock = l1->getExitBlock();
+      errs() << "b1exitblock: " << b1exitblock->getName() << "\n";
       //Primo basic block del secondo loop
-      Loop *l2 = Worklist[i+1];
+      Loop *l2 = Worklist[i];
       BasicBlock *b2header = l2->getHeader();
-      BasicBlock *b2preheader = l2->getLoopPreheader();
+      errs() << "b2header: " << b2header->getName() << "\n";
+      BasicBlock *b2preheader = nullptr;
+      for (BasicBlock *Pred : predecessors(b2header)) {
+        if (!l2->contains(Pred)) {
+          b2preheader = Pred;
+        }
+      }
+      errs() << "b2preheader: " << b2preheader->getName() << "\n";
       if (!b1header || !b1exitblock || !b2header || !b2preheader) continue;
       //Guarded
       BasicBlock *b1headersuccessor = nullptr;
